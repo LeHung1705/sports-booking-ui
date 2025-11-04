@@ -1,25 +1,36 @@
 // app/(tabs)/index.tsx
 import React from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+const PRIMARY = "#00A36C";
 
 export default function HomeScreen() {
   return (
     <ScrollView style={styles.container}>
+      {/* Header với logo và lời chào */}
       <View style={styles.header}>
-        <Text style={styles.greeting}>Xin chào! 👋</Text>
-        <Text style={styles.subGreeting}>Tìm sân thể thao phù hợp với bạn</Text>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require("../../assets/images/logo.png")}
+            style={styles.logoImage}
+          />
+        </View>
+        <Text style={styles.greeting}>Xin chào 👋</Text>
+        <Text style={styles.subGreeting}>Khám phá và đặt sân thể thao dễ dàng cùng TechBo</Text>
       </View>
 
+      {/* Danh mục sân */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thể loại sân phổ biến</Text>
         <View style={styles.categoryGrid}>
           <CategoryCard icon="⚽" title="Sân bóng đá" />
           <CategoryCard icon="🏀" title="Sân bóng rổ" />
           <CategoryCard icon="🎾" title="Sân tennis" />
-          <CategoryCard icon="🏐" title="Sân cầu lông" />
+          <CategoryCard icon="🏸" title="Sân cầu lông" />
         </View>
       </View>
 
+      {/* Sân gần bạn */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Sân gần bạn</Text>
         <VenueCard
@@ -79,26 +90,40 @@ function VenueCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#F9FAFB",
   },
   header: {
-    backgroundColor: "#007AFF",
-    padding: 24,
-    paddingTop: 40,
+    alignItems: "center",
+    paddingVertical: 36,
+    paddingHorizontal: 16,
+    backgroundColor: PRIMARY,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  logoContainer: {
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  logoImage: {
+    width: 80,
+    height: 80,
   },
   greeting: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "bold",
     color: "#fff",
-    marginBottom: 8,
+    marginBottom: 4,
   },
   subGreeting: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#fff",
+    textAlign: "center",
     opacity: 0.9,
+    maxWidth: 300,
   },
   section: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
   },
   sectionTitle: {
     fontSize: 20,
@@ -109,14 +134,16 @@ const styles = StyleSheet.create({
   categoryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "space-between",
     gap: 12,
   },
   categoryCard: {
-    width: "48%",
+    width: "47%",
     backgroundColor: "#fff",
     borderRadius: 12,
-    padding: 20,
+    paddingVertical: 20,
     alignItems: "center",
+    justifyContent: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -124,7 +151,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   categoryIcon: {
-    fontSize: 40,
+    fontSize: 38,
     marginBottom: 8,
   },
   categoryTitle: {
@@ -180,7 +207,7 @@ const styles = StyleSheet.create({
   venuePrice: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#007AFF",
+    color: PRIMARY,
   },
   venueRating: {
     fontSize: 14,
