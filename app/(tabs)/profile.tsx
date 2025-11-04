@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +12,8 @@ import {
   View,
 } from "react-native";
 import { authApi } from "../../api/authApi";
+
+const PRIMARY = "#00A36C";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -24,66 +27,55 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      "Xác nhận đăng xuất",
-      "Bạn có chắc chắn muốn đăng xuất?",
-      [
-        {
-          text: "Hủy",
-          style: "cancel",
+    Alert.alert("Xác nhận đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Đăng xuất",
+        style: "destructive",
+        onPress: async () => {
+          setLoading(true);
+          try {
+            await authApi.logout();
+            // TODO: Xóa token khỏi AsyncStorage
+            // await AsyncStorage.removeItem('token');
+            // await AsyncStorage.removeItem('user');
+            router.replace("/screens/LoginScreen");
+          } catch (error) {
+            console.error("❌ Logout failed:", error);
+            router.replace("/");
+          } finally {
+            setLoading(false);
+          }
         },
-        {
-          text: "Đăng xuất",
-          style: "destructive",
-          onPress: async () => {
-            setLoading(true);
-            try {
-              // Gọi API logout (nếu backend có)
-              await authApi.logout();
-              
-              // TODO: Xóa token khỏi AsyncStorage
-              // await AsyncStorage.removeItem('token');
-              // await AsyncStorage.removeItem('user');
-
-              console.log("✅ Logged out successfully");
-              router.replace("/screens/LoginScreen");
-            } catch (error) {
-              console.error("❌ Logout failed:", error);
-              // Vẫn đăng xuất local nếu API lỗi
-              router.replace("/");
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
     <ScrollView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {user.name.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        <Image
+          source={require("../../assets/images/logo.png")}
+          style={styles.logo}
+        />
         <Text style={styles.name}>{user.name}</Text>
         <Text style={styles.email}>{user.email}</Text>
       </View>
 
+      {/* Thông tin cá nhân */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
-        
         <View style={styles.infoCard}>
           <InfoRow icon="📧" label="Email" value={user.email} />
           <InfoRow icon="📱" label="Số điện thoại" value={user.phone} />
         </View>
       </View>
 
+      {/* Cài đặt */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Cài đặt</Text>
-        
+
         <TouchableOpacity style={styles.menuItem}>
           <Text style={styles.menuIcon}>✏️</Text>
           <Text style={styles.menuText}>Chỉnh sửa thông tin</Text>
@@ -109,6 +101,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Logout */}
       <View style={styles.section}>
         <TouchableOpacity
           style={[styles.logoutButton, loading && styles.logoutButtonDisabled]}
@@ -154,26 +147,19 @@ function InfoRow({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#F9FAFB",
   },
   header: {
-    backgroundColor: "#007AFF",
+    backgroundColor: PRIMARY,
     padding: 32,
     alignItems: "center",
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
+  logo: {
+    width: 100,
+    height: 100,
     marginBottom: 16,
-  },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#007AFF",
   },
   name: {
     fontSize: 24,
@@ -214,7 +200,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#f0f0f0",
   },
   infoIcon: {
-    fontSize: 24,
+    fontSize: 22,
     marginRight: 12,
   },
   infoContent: {
@@ -222,11 +208,11 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: "#666",
-    marginBottom: 4,
+    color: "#888",
+    marginBottom: 2,
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#1a1a1a",
     fontWeight: "500",
   },
@@ -253,12 +239,12 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
   },
   menuArrow: {
-    fontSize: 24,
+    fontSize: 22,
     color: "#ccc",
   },
   logoutButton: {
     flexDirection: "row",
-    backgroundColor: "#ff3b30",
+    backgroundColor: "#FF3B30",
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
