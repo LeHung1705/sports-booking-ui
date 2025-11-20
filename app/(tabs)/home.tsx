@@ -1,32 +1,58 @@
-// app/(tabs)/index.tsx
 import React from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const PRIMARY = "#00A36C";
 
 export default function HomeScreen() {
   return (
     <ScrollView style={styles.container}>
-      {/* Header với logo và lời chào */}
+      {/* Header */}
       <View style={styles.header}>
-        <View style={styles.logoContainer}>
+        <View style={styles.headerTop}>
           <Image
             source={require("../../assets/images/logo.png")}
             style={styles.logoImage}
           />
+          <Text style={styles.headerTitle}>
+            Khám phá và đặt sân thể thao dễ dàng cùng{" "}
+            <Text style={{ fontWeight: "bold" }}>TechBo</Text>
+          </Text>
         </View>
-        <Text style={styles.greeting}>Xin chào 👋</Text>
-        <Text style={styles.subGreeting}>Khám phá và đặt sân thể thao dễ dàng cùng TechBo</Text>
+      </View>
+
+      {/* Thanh tìm kiếm giao giữa phần xanh & trắng */}
+      <View style={styles.searchWrapper}>
+        <View style={styles.searchBar}>
+          <Image
+            source={require("../../assets/images/logo.png")}
+            style={styles.searchIcon}
+          />
+          <TextInput
+            placeholder="Tìm kiếm sân, sự kiện, đội nhóm..."
+            placeholderTextColor="#999"
+            style={styles.searchInput}
+          />
+        </View>
       </View>
 
       {/* Danh mục sân */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thể loại sân phổ biến</Text>
         <View style={styles.categoryGrid}>
-          <CategoryCard icon="⚽" title="Sân bóng đá" />
-          <CategoryCard icon="🏀" title="Sân bóng rổ" />
-          <CategoryCard icon="🎾" title="Sân tennis" />
-          <CategoryCard icon="🏸" title="Sân cầu lông" />
+          <CategoryCard icon="⚽" title="Bóng đá" />
+          <CategoryCard icon="🏸" title="Cầu lông" />
+          <CategoryCard icon="🎾" title="Tennis" />
+          <CategoryCard icon="🏐" title="Bóng chuyền" />
+          <CategoryCard icon="🏀" title="Bóng rổ" />
+          <CategoryCard icon="🥅" title="Pickleball" />
         </View>
       </View>
 
@@ -92,41 +118,68 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F9FAFB",
   },
+
+  // ===== HEADER =====
   header: {
-    alignItems: "center",
-    paddingVertical: 36,
-    paddingHorizontal: 16,
     backgroundColor: PRIMARY,
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 60, // tạo khoảng cho thanh search chồng lên
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  logoContainer: {
+  headerTop: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
   },
   logoImage: {
-    width: 80,
-    height: 80,
+    width: 50,
+    height: 50,
+    marginRight: 10,
   },
-  greeting: {
-    fontSize: 26,
-    fontWeight: "bold",
+  headerTitle: {
     color: "#fff",
-    marginBottom: 4,
-  },
-  subGreeting: {
     fontSize: 15,
-    color: "#fff",
-    textAlign: "center",
-    opacity: 0.9,
-    maxWidth: 300,
+    lineHeight: 20,
+    flex: 1,
   },
+
+  // ===== SEARCH BAR =====
+  searchWrapper: {
+    marginTop: -30, // đẩy lên chồng giữa header và body
+    paddingHorizontal: 20,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchIcon: {
+    width: 26,
+    height: 26,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#000",
+  },
+
+  // ===== CATEGORY =====
   section: {
     paddingHorizontal: 20,
     paddingVertical: 24,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#1a1a1a",
     marginBottom: 16,
@@ -135,31 +188,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 10,
   },
   categoryCard: {
-    width: "47%",
+    width: "30%",
     backgroundColor: "#fff",
-    borderRadius: 12,
-    paddingVertical: 20,
+    borderRadius: 10,
+    paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
   },
   categoryIcon: {
-    fontSize: 38,
-    marginBottom: 8,
+    fontSize: 28,
+    marginBottom: 6,
   },
   categoryTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#1a1a1a",
     textAlign: "center",
   },
+
+  // ===== VENUE =====
   venueCard: {
     flexDirection: "row",
     backgroundColor: "#fff",
@@ -182,20 +237,20 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   venueImagePlaceholder: {
-    fontSize: 32,
+    fontSize: 30,
   },
   venueInfo: {
     flex: 1,
     justifyContent: "space-between",
   },
   venueName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "bold",
     color: "#1a1a1a",
     marginBottom: 4,
   },
   venueAddress: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#666",
     marginBottom: 8,
   },
@@ -205,12 +260,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   venuePrice: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: PRIMARY,
   },
   venueRating: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#666",
   },
 });

@@ -10,13 +10,13 @@ export default function RootLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen
-        name="screens/LoginScreen"
+        name="(auth)/login"
         options={{
           headerShown: false,
         }}
       />
       <Stack.Screen
-        name="screens/RegisterScreen"
+        name="(auth)/register"
         options={{
           headerShown: true,
           title: "Đăng ký",
@@ -24,7 +24,7 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
-        name="screens/ForgotPasswordScreen"
+        name="(auth)/forgot-password"
         options={{
           headerShown: true,
           title: "Quên mật khẩu",

@@ -3,17 +3,17 @@ import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { authApi } from "../../api/authApi";
 
@@ -22,6 +22,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -33,7 +34,7 @@ export default function LoginScreen() {
     try {
       const response = await authApi.login({ email, password });
       Alert.alert("Thành công", "Đăng nhập thành công!", [
-        { text: "OK", onPress: () => router.replace("./(tabs)") },
+        { text: "OK", onPress: () => router.replace("/home") },
       ]);
     } catch (error: any) {
       Alert.alert("Lỗi", error.response?.data?.message || "Đăng nhập thất bại");
@@ -73,14 +74,23 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Mật khẩu"
-            placeholderTextColor="#aaa"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Mật khẩu"
+              placeholderTextColor="#aaa"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <FontAwesome
+                name={showPassword ? "eye-slash" : "eye"}
+                size={20}
+                color="#555"
+              />
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity onPress={() => router.push("./screens/ForgotPasswordScreen")}>
             <Text style={styles.forgot}>Quên mật khẩu?</Text>
@@ -235,4 +245,20 @@ const styles = StyleSheet.create({
     color: PRIMARY,
     fontWeight: "bold",
   },
+  passwordContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#F5F5F5",
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: "#E0E0E0",
+  paddingHorizontal: 14,
+  marginBottom: 16,
+  },
+  passwordInput: {
+    flex: 1,
+    color: "#000",
+    paddingVertical: 14,
+  },
+
 });

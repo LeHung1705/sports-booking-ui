@@ -1,28 +1,49 @@
-// api/apiClient.ts
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-const API_BASE_URL = "http://172.20.10.6:8080/api/v1";
-console.log("🌐 API Base URL:", API_BASE_URL);
+// Thay IP máy bạn
+const API_BASE_URL = "http://172.20.10.6:8080/api/v1"; 
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 20000,
+  timeout: 10000,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Interceptor để tự động thêm token vào header
+// Interceptor Request
 apiClient.interceptors.request.use(
-  (config) => {
-    // ✅ nếu không cần chờ async → dùng sync logic
-    // const token = "token_của_bạn"; // hoặc lấy từ context
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+  // 👇 Dùng ': any' ở đây là liều thuốc chữa bách bệnh cho lỗi version
+  async (config: any) => {
+    try {
+      const token = await AsyncStorage.getItem("accessToken");
+      if (token) {
+        // Fix cho mọi phiên bản: đảm bảo headers luôn tồn tại
+        if (!config.headers) {
+          config.headers = {};
+        }
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error("Error loading token", error);
+    }
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Interceptor Response
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      console.log(`❌ API Error [${error.response.status}]:`, error.response.data);
+    } else {
+      console.log("❌ Network Error:", error.message);
+    }
+    return Promise.reject(error);
+  }
 );
 
 export default apiClient;

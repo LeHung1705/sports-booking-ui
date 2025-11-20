@@ -1,7 +1,7 @@
 // app/(tabs)/_layout.tsx
+import { FontAwesome } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
-import { Text } from "react-native";
 
 export default function TabLayout() {
   return (
@@ -25,11 +25,20 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           title: "Trang chủ",
           tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24 }}>🏠</Text>
+            <FontAwesome name="home" size={24} color="#4B5563" />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="map"
+        options={{
+          title: "Bản đồ",
+          tabBarIcon: ({ color }) => (
+            <FontAwesome name="map" size={20} color="#4B5563" />
           ),
         }}
       />
@@ -38,7 +47,7 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24 }}>👤</Text>
+            <FontAwesome name="user" size={24} color="#4B5563" />
           ),
         }}
       />
