@@ -1,4 +1,3 @@
-// app/(tabs)/index.tsx
 import React, { useEffect, useState } from "react";
 import {
   Image,
@@ -11,83 +10,109 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Colors } from "../../constants/Colors";
+import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 
-import { courtApi } from "../../api/courtApi";
-import type { Court } from "../../types/Court";
-import { CourtCard } from "../../components/common/CourtCard";
-import { CategoryCard } from "../../components/home/CategoryCard";
-
-const HEADER_PRIMARY = Colors.primary; 
+import { venueApi } from "@/api/venueApi";
+import type { VenueListItem } from "@/types/venue";
+import { CategoryCard } from "@/components/home/CategoryCard";
+import { VenueCard } from "@/components/home/VenueCard";
 
 const categories = [
-  { key: "FOOTBALL", label: "Bóng đá" },
-  { key: "VOLLEYBALL", label: "Bóng chuyền" },
-  { key: "BASKETBALL", label: "Bóng rổ" },
-  { key: "BADMINTON", label: "Cầu lông" },
-  { key: "TENNIS",  label: "Tennis" },
-  { key: "PICKLEBALL", label: "Pickleball" },
+  {
+    key: "FOOTBALL",
+    label: "Bóng đá",
+    icon: require("@/assets/icons/football.svg"),
+  },
+  {
+    key: "VOLLEYBALL",
+    label: "Bóng chuyền",
+    icon: require("@/assets/icons/volleyball.svg"),
+  },
+  {
+    key: "BASKETBALL",
+    label: "Bóng rổ",
+    icon: require("@/assets/icons/basketball.svg"),
+  },
+  {
+    key: "BADMINTON",
+    label: "Cầu lông",
+    icon: require("@/assets/icons/badminton.svg"),
+  },
+  {
+    key: "TENNIS",
+    label: "Tennis",
+    icon: require("@/assets/icons/tennis.svg"),
+  },
+  {
+    key: "PICKLEBALL",
+    label: "Pickleball",
+    icon: require("@/assets/icons/pickleball.svg"),
+  },
 ];
 
-const iconMap: Record<string, any> = {
-  FOOTBALL: require("@/assets/icon/football.svg"),
-  VOLLEYBALL: require("@/assets/icon/volleyball.svg"),
-  BASKETBALL: require("@/assets/icon/basketball.svg"),
-  BADMINTON: require("@/assets/icon/badminton.svg"),
-  TENNIS: require("@/assets/icon/tennis.svg"),
-  PICKLEBALL: require("@/assets/icon/pickleball.svg"),
-};
+const HEADER_PRIMARY = Colors.primary;
 
 export default function HomeScreen() {
   const router = useRouter();
   const [keyword, setKeyword] = useState("");
-  const [courts, setCourts] = useState<Court[]>([]);
+  const [venues, setVenues] = useState<VenueListItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchCourts = async () => {
+    const fetchVenues = async () => {
       setLoading(true);
       try {
-        const data = await courtApi.getCourts();
-        setCourts(data);
+        const data = await venueApi.listVenues();
+        setVenues(data);
       } catch (error) {
-        console.error("Failed to load courts", error);
+        console.error("Failed to load venues", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchCourts();
+
+    fetchVenues();
   }, []);
 
   const handleSearchSubmit = () => {
     router.push({
       pathname: "/",
-      params: { keyword },
+      params: { q: keyword },
     });
   };
 
-  const handlePressCourt = (court: Court) => {
-    router.push({
-      pathname: "/court/[id]",
-      params: { id: court.id },
-    });
-  };
-
-  const handlePressCategory = (sportType: string) => {
+  const handlePressVenue = (venue: VenueListItem) => {
     router.push({
       pathname: "/",
-      params: { sportType },
+      params: { id: venue.id },
     });
+  };
+
+  const handlePressCategory = (key: string) => {
+    if (key === "PICKLEBALL") {
+      router.push({
+        pathname: "/",
+        params: { q: "Pickleball" },
+      });
+    } else {
+      router.push({
+        pathname: "/",
+        params: { sport: key },
+      });
+    }
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 24 }}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 24 }}
+    >
       {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Image
-            source={require("../../assets/images/logo.png")}
+            source={require("@/assets/images/logo.png")}
             style={styles.logoImage}
           />
           <Text style={styles.headerTitle}>
@@ -97,7 +122,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* SEARCH BAR – chồng lên giữa phần xanh & trắng */}
+      {/* SEARCH BAR */}
       <View style={styles.searchWrapper}>
         <View style={styles.searchBar}>
           <Ionicons
@@ -125,23 +150,22 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      
-      
+      {/* CATEGORY */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thể loại sân phổ biến</Text>
         <View style={styles.categoryGrid}>
           {categories.map((c) => (
             <CategoryCard
               key={c.key}
-              icon={iconMap[c.key]}
               title={c.label}
+              icon={c.icon}
               onPress={() => handlePressCategory(c.key)}
             />
           ))}
         </View>
       </View>
 
-      {/* SECTION: Sân gần bạn */}
+      {/* VENUES */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Sân gần bạn</Text>
 
@@ -152,15 +176,15 @@ export default function HomeScreen() {
           />
         ) : (
           <>
-            {courts.map((court) => (
-              <CourtCard
-                key={court.id}
-                court={court}
-                onPress={() => handlePressCourt(court)}
+            {venues.map((venue) => (
+              <VenueCard
+                key={venue.id}
+                venue={venue}
+                onPress={() => handlePressVenue(venue)}
               />
             ))}
 
-            {!courts.length && (
+            {!venues.length && (
               <Text style={styles.emptyText}>
                 Hiện chưa có dữ liệu sân, thử lại sau.
               </Text>
@@ -177,13 +201,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F9FAFB",
   },
-
-  // ===== HEADER =====
   header: {
     backgroundColor: HEADER_PRIMARY,
     paddingHorizontal: 20,
     paddingTop: 40,
-    paddingBottom: 60, // tạo khoảng cho thanh search chồng lên
+    paddingBottom: 60,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
@@ -207,16 +229,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#fff",
   },
-
-  // ===== SEARCH BAR =====
   searchWrapper: {
-    marginTop: -30, // đẩy lên chồng giữa header và body
+    marginTop: -30,
     paddingHorizontal: 20,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -232,7 +252,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: "#000",
+    color: Colors.text,
   },
   searchButton: {
     width: 32,
@@ -243,8 +263,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginLeft: 8,
   },
-
-  // ===== SECTION COMMON =====
   section: {
     paddingHorizontal: 20,
     paddingVertical: 24,
@@ -252,23 +270,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#1a1a1a",
+    color: Colors.text,
     marginBottom: 16,
   },
-
-  // ===== CATEGORY GRID =====
   categoryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
     gap: 10,
   },
-
-  // ===== COURT LIST =====
   emptyText: {
     marginTop: 12,
     fontSize: 13,
-    color: "#666",
+    color: Colors.textSecondary,
     textAlign: "center",
   },
 });
