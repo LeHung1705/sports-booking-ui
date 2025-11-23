@@ -1,29 +1,41 @@
+export type SportType =
+  | "FOOTBALL"
+  | "BADMINTON"
+  | "TENNIS"
+  | "BASKETBALL"
+  | "VOLLEYBALL"
+  | "OTHER";
+
+export interface CourtReview {
+  id: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
 export interface Court {
   id: string;
   name: string;
   address: string;
-  city?: string;
   district?: string;
-  pricePerHour: number;
-  rating: number;
-  ratingCount?: number;
-  thumbnailUrl?: string;
+  city?: string;
+
+  sportType: SportType;
+  minPricePerHour: number;
+  maxPricePerHour?: number;
+
+  ratingAvg: number;
+  ratingCount: number;
+
   distanceKm?: number;
-  lat?: number;
-  lng?: number;
-}
 
-export interface CourtDetail extends Court {
+  latitude: number;
+  longitude: number;
+
+  thumbnailUrl?: string;
   images?: string[];
-  facilities?: string[];
-  description?: string;
-}
 
-export interface CourtSearchParams {
-  keyword?: string;
-  city?: string;
-  district?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  sportType?: string;
+  facilities?: string[];
+  reviews?: CourtReview[];
 }
