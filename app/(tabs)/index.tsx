@@ -76,10 +76,12 @@ export default function HomeScreen() {
   }, []);
 
   const handleSearchSubmit = () => {
-    router.push({
-      pathname: "/",
-      params: { q: keyword },
-    });
+    if (keyword.trim()) {
+      router.push({
+        pathname: "/search",
+        params: { q: keyword },
+      });
+    }
   };
 
   const handlePressVenue = (venue: VenueListItem) => {
@@ -97,7 +99,7 @@ export default function HomeScreen() {
       });
     } else {
       router.push({
-        pathname: "/",
+        pathname: "/search",
         params: { sport: key },
       });
     }

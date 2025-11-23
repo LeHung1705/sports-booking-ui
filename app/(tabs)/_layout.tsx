@@ -1,4 +1,3 @@
-// app/(tabs)/_layout.tsx
 import { FontAwesome } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
@@ -25,7 +24,7 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="home"
+        name="index"
         options={{
           title: "Trang chủ",
           tabBarIcon: ({ color }) => (
