@@ -118,6 +118,9 @@ export default function SearchScreen() {
     return SPORTS.find(s => s.key === sportKey)?.label || sportKey;
   };
 
+  // Kiểm tra có filter đang active không
+  const hasActiveFilters = getActiveFiltersCount() > 0;
+
   return (
     <View style={styles.container}>
       <Stack.Screen 
@@ -136,9 +139,9 @@ export default function SearchScreen() {
         <View style={styles.searchInputWrap}>
           <Ionicons
             name="search-outline"
-            size={16}
+            size={18}
             color={Colors.textSecondary}
-            style={{ marginRight: 6 }}
+            style={{ marginRight: 8 }}
           />
           <TextInput
             style={styles.searchInput}
@@ -149,41 +152,44 @@ export default function SearchScreen() {
             returnKeyType="search"
             onSubmitEditing={handleSubmit}
             autoFocus={!params.q}
+            autoCapitalize="none"
+            autoCorrect={false}
           />
           
           {searchQuery ? (
             <TouchableOpacity onPress={handleClearSearch} style={styles.clearButton}>
-              <Ionicons name="close-circle" size={14} color={Colors.textSecondary} />
+              <Ionicons name="close-circle" size={16} color={Colors.textSecondary} />
             </TouchableOpacity>
           ) : null}
-        </View>
 
-        <TouchableOpacity 
-          onPress={handleSubmit} 
-          style={styles.searchAction}
-        >
-          <Text style={styles.searchActionText}>Tìm</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* FILTER BAR */}
-      <View style={styles.filterBar}>
-        <View style={styles.filterLeft}>
+          {/* Icon bộ lọc bên trong search bar - như trong design */}
+          <View style={styles.filterDivider} />
           <TouchableOpacity 
-            style={styles.filterButton}
+            style={[
+              styles.filterIconButton,
+              hasActiveFilters && styles.filterIconButtonActive
+            ]}
             onPress={() => setShowFilterSheet(true)}
           >
-            <Ionicons name="options-outline" size={14} color={Colors.primary} />
-            <Text style={styles.filterButtonText}>Bộ lọc</Text>
-            {getActiveFiltersCount() > 0 && (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{getActiveFiltersCount()}</Text>
+            <Ionicons 
+              name="options-outline" 
+              size={16} 
+              color={hasActiveFilters ? Colors.primary : Colors.textSecondary} 
+            />
+            {hasActiveFilters && (
+              <View style={styles.filterIconBadge}>
+                <Text style={styles.filterIconBadgeText}>{getActiveFiltersCount()}</Text>
               </View>
             )}
           </TouchableOpacity>
+        </View>
+      </View>
 
-          {/* Active Filters */}
-          {(sport || city || radius !== 5) && (
+      {/* FILTER BAR - Chỉ hiển thị khi có filter active */}
+      {hasActiveFilters && (
+        <View style={styles.filterBar}>
+          <View style={styles.filterLeft}>
+            <Text style={styles.activeFiltersLabel}>Bộ lọc đang áp dụng:</Text>
             <FlatList
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -214,18 +220,16 @@ export default function SearchScreen() {
               )}
               style={styles.activeFiltersScroll}
             />
-          )}
-        </View>
+          </View>
 
-        {(sport || city || radius !== 5) && (
           <TouchableOpacity 
             onPress={handleClearAllFilters}
             style={styles.clearAllButton}
           >
             <Text style={styles.clearAllText}>Xoá hết</Text>
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      )}
 
       {/* SEARCH RESULTS */}
       {loading ? (
@@ -246,7 +250,6 @@ export default function SearchScreen() {
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={40} color={Colors.textSecondary} />
               <Text style={styles.emptyText}>Không tìm thấy sân phù hợp</Text>
               <Text style={styles.emptySubtext}>Thử điều chỉnh bộ lọc hoặc từ khoá tìm kiếm</Text>
             </View>
@@ -281,13 +284,13 @@ const styles = StyleSheet.create({
   searchHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     paddingTop: 48,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
     backgroundColor: Colors.white,
-    gap: 8,
+    gap: 12,
   },
   backButton: { 
     padding: 4,
@@ -297,39 +300,61 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: Colors.card,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     color: Colors.text,
     padding: 0,
+    includeFontPadding: false,
+    marginRight: 8,
   },
   clearButton: {
-    padding: 2,
-    marginLeft: 2,
+    padding: 4,
+    marginRight: 4,
   },
-  searchAction: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  // Divider giữa input và icon filter
+  filterDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: Colors.border,
+    marginHorizontal: 8,
+  },
+  // Icon bộ lọc bên trong search bar
+  filterIconButton: {
+    padding: 4,
+    borderRadius: 6,
+    position: 'relative',
+  },
+  filterIconButtonActive: {
+    backgroundColor: Colors.primary + '20',
+  },
+  filterIconBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
     backgroundColor: Colors.primary,
     borderRadius: 6,
-    minWidth: 40,
+    width: 12,
+    height: 12,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  searchActionText: {
+  filterIconBadgeText: {
     color: Colors.white,
-    fontWeight: "600",
-    fontSize: 13,
+    fontSize: 8,
+    fontWeight: 'bold',
   },
+  // Filter bar styles
   filterBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: Colors.white,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
@@ -341,34 +366,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary + '10',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    gap: 4,
-    minWidth: 60,
-  },
-  filterButtonText: {
-    color: Colors.primary,
-    fontWeight: '500',
+  activeFiltersLabel: {
     fontSize: 12,
-  },
-  filterBadge: {
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-    width: 14,
-    height: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 2,
-  },
-  filterBadgeText: {
-    color: Colors.white,
-    fontSize: 9,
-    fontWeight: 'bold',
+    color: Colors.textSecondary,
+    fontWeight: '500',
   },
   activeFiltersScroll: {
     flex: 1,
@@ -409,27 +410,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   listContent: {
-    padding: 12,
+    padding: 16,
     paddingBottom: 20,
   },
   resultsCount: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textSecondary,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 40,
-    gap: 8,
+    paddingVertical: 60,
+    gap: 12,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 16,
     color: Colors.text,
     fontWeight: "500",
   },
   emptySubtext: {
-    fontSize: 12,
+    fontSize: 14,
     color: Colors.textSecondary,
     textAlign: "center",
   },

@@ -22,32 +22,32 @@ const categories = [
   {
     key: "FOOTBALL",
     label: "Bóng đá",
-    icon: require("@/assets/icons/football.svg"),
+    icon: require("@/assets/icons/football.png"),
   },
   {
     key: "VOLLEYBALL",
     label: "Bóng chuyền",
-    icon: require("@/assets/icons/volleyball.svg"),
+    icon: require("@/assets/icons/volleyball.png"),
   },
   {
     key: "BASKETBALL",
     label: "Bóng rổ",
-    icon: require("@/assets/icons/basketball.svg"),
+    icon: require("@/assets/icons/basketball.png"),
   },
   {
     key: "BADMINTON",
     label: "Cầu lông",
-    icon: require("@/assets/icons/badminton.svg"),
+    icon: require("@/assets/icons/badminton.png"),
   },
   {
     key: "TENNIS",
     label: "Tennis",
-    icon: require("@/assets/icons/tennis.svg"),
+    icon: require("@/assets/icons/tennis.png"),
   },
   {
     key: "PICKLEBALL",
     label: "Pickleball",
-    icon: require("@/assets/icons/pickleball.svg"),
+    icon: require("@/assets/icons/pickleball.png"),
   },
 ];
 
@@ -74,6 +74,11 @@ export default function HomeScreen() {
 
     fetchVenues();
   }, []);
+
+  
+  const handleSearchFocus = () => {
+    router.push("/search");
+  };
 
   const handleSearchSubmit = () => {
     if (keyword.trim()) {
@@ -126,7 +131,11 @@ export default function HomeScreen() {
 
       {/* SEARCH BAR */}
       <View style={styles.searchWrapper}>
-        <View style={styles.searchBar}>
+        <TouchableOpacity 
+          style={styles.searchBar}
+          activeOpacity={1}
+          onPress={handleSearchFocus} 
+        >
           <Ionicons
             name="search-outline"
             size={20}
@@ -134,22 +143,24 @@ export default function HomeScreen() {
             style={styles.searchIcon}
           />
           <TextInput
-            placeholder="Tìm kiếm sân, sự kiện, đội nhóm..."
+            placeholder="Tìm sân theo tên, khu vực..."
             placeholderTextColor="#999"
             style={styles.searchInput}
             value={keyword}
             onChangeText={setKeyword}
             returnKeyType="search"
             onSubmitEditing={handleSearchSubmit}
+            onFocus={handleSearchFocus} 
+            editable={false} 
           />
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={handleSearchSubmit}
             activeOpacity={0.8}
             style={styles.searchButton}
           >
             <Ionicons name="arrow-forward" size={18} color={Colors.white} />
-          </TouchableOpacity>
-        </View>
+          </TouchableOpacity> */}
+        </TouchableOpacity>
       </View>
 
       {/* CATEGORY */}

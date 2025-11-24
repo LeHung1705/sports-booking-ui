@@ -1,25 +1,29 @@
-import { FontAwesome } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
 import React from "react";
+import { Tabs } from "expo-router";
+import { Feather } from "@expo/vector-icons";
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#007AFF",
-        headerShown: true,
+        headerShown: false,
+        tabBarActiveTintColor: "#00A36C",
+        tabBarInactiveTintColor: "#6B7280",
         tabBarStyle: {
-          backgroundColor: "#fff",
+          backgroundColor: "#ffffff",
           borderTopWidth: 1,
-          borderTopColor: "#e0e0e0",
-          height: 80,
-          paddingBottom: 8,
-          paddingTop: 8,
+          borderTopColor: "#e5e7eb",
+          height: 60,
+          paddingVertical: 6,
+          shadowColor: "#000",
+          shadowOpacity: 0.05,
+          shadowOffset: { width: 0, height: -2 },
+          shadowRadius: 8,
+          elevation: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: "600",
-          marginBottom: 12,
         },
       }}
     >
@@ -27,26 +31,28 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Trang chủ",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="home" size={24} color="#4B5563" />
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="home" size={22} color={color} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="map"
         options={{
           title: "Bản đồ",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="map" size={20} color="#4B5563" />
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="map" size={22} color={color} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="user" size={24} color="#4B5563" />
+          title: "Tài khoản",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="user" size={22} color={color} />
           ),
         }}
       />
