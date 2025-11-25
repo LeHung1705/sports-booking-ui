@@ -4,8 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
+  Pressable,
   View,
   ActivityIndicator,
 } from "react-native";
@@ -19,43 +18,18 @@ import { CategoryCard } from "@/components/home/CategoryCard";
 import { VenueCard } from "@/components/home/VenueCard";
 
 const categories = [
-  {
-    key: "FOOTBALL",
-    label: "Bóng đá",
-    icon: require("@/assets/icons/football.png"),
-  },
-  {
-    key: "VOLLEYBALL",
-    label: "Bóng chuyền",
-    icon: require("@/assets/icons/volleyball.png"),
-  },
-  {
-    key: "BASKETBALL",
-    label: "Bóng rổ",
-    icon: require("@/assets/icons/basketball.png"),
-  },
-  {
-    key: "BADMINTON",
-    label: "Cầu lông",
-    icon: require("@/assets/icons/badminton.png"),
-  },
-  {
-    key: "TENNIS",
-    label: "Tennis",
-    icon: require("@/assets/icons/tennis.png"),
-  },
-  {
-    key: "PICKLEBALL",
-    label: "Pickleball",
-    icon: require("@/assets/icons/pickleball.png"),
-  },
+  { key: "FOOTBALL", label: "Bóng đá", icon: require("@/assets/icons/football.png") },
+  { key: "VOLLEYBALL", label: "Bóng chuyền", icon: require("@/assets/icons/volleyball.png") },
+  { key: "BASKETBALL", label: "Bóng rổ", icon: require("@/assets/icons/basketball.png") },
+  { key: "BADMINTON", label: "Cầu lông", icon: require("@/assets/icons/badminton.png") },
+  { key: "TENNIS", label: "Tennis", icon: require("@/assets/icons/tennis.png") },
+  { key: "PICKLEBALL", label: "Pickleball", icon: require("@/assets/icons/pickleball.png") },
 ];
 
 const HEADER_PRIMARY = Colors.primary;
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [keyword, setKeyword] = useState("");
   const [venues, setVenues] = useState<VenueListItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -71,27 +45,16 @@ export default function HomeScreen() {
         setLoading(false);
       }
     };
-
     fetchVenues();
   }, []);
 
-  
-  const handleSearchFocus = () => {
+  const handleOpenSearch = () => {
     router.push("/search");
-  };
-
-  const handleSearchSubmit = () => {
-    if (keyword.trim()) {
-      router.push({
-        pathname: "/search",
-        params: { q: keyword },
-      });
-    }
   };
 
   const handlePressVenue = (venue: VenueListItem) => {
     router.push({
-      pathname: "/",
+      pathname: "/venue/[id]",
       params: { id: venue.id },
     });
   };
@@ -131,41 +94,32 @@ export default function HomeScreen() {
 
       {/* SEARCH BAR */}
       <View style={styles.searchWrapper}>
-        <TouchableOpacity 
-          style={styles.searchBar}
-          activeOpacity={1}
-          onPress={handleSearchFocus} 
+        <Pressable
+          onPress={handleOpenSearch}
+          style={({ pressed }) => [
+            styles.searchBar,
+            pressed && styles.searchBarPressed,
+          ]}
         >
           <Ionicons
             name="search-outline"
-            size={20}
+            size={22}
             color="#999"
             style={styles.searchIcon}
           />
-          <TextInput
-            placeholder="Tìm sân theo tên, khu vực..."
-            placeholderTextColor="#999"
-            style={styles.searchInput}
-            value={keyword}
-            onChangeText={setKeyword}
-            returnKeyType="search"
-            onSubmitEditing={handleSearchSubmit}
-            onFocus={handleSearchFocus} 
-            editable={false} 
-          />
-          {/* <TouchableOpacity
-            onPress={handleSearchSubmit}
-            activeOpacity={0.8}
-            style={styles.searchButton}
-          >
-            <Ionicons name="arrow-forward" size={18} color={Colors.white} />
-          </TouchableOpacity> */}
-        </TouchableOpacity>
+          <Text style={styles.searchPlaceholder}>
+            Tìm sân theo tên, khu vực...
+          </Text>
+        </Pressable>
       </View>
 
       {/* CATEGORY */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Thể loại sân phổ biến</Text>
+        <Text style={styles.sectionTitle}>Môn thể thao phổ biến</Text>
+        <Text style={styles.sectionSubtitle}>
+          Chọn môn thể thao bạn muốn chơi hôm nay
+        </Text>
+
         <View style={styles.categoryGrid}>
           {categories.map((c) => (
             <CategoryCard
@@ -181,11 +135,14 @@ export default function HomeScreen() {
       {/* VENUES */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Sân gần bạn</Text>
+        <Text style={styles.sectionSubtitle}>
+          Gợi ý những sân phù hợp để bạn đặt nhanh
+        </Text>
 
         {loading ? (
           <ActivityIndicator
             color={Colors.primary}
-            style={{ marginTop: 12 }}
+            style={{ marginTop: 16 }}
           />
         ) : (
           <>
@@ -199,7 +156,7 @@ export default function HomeScreen() {
 
             {!venues.length && (
               <Text style={styles.emptyText}>
-                Hiện chưa có dữ liệu sân, thử lại sau.
+                Hiện chưa có dữ liệu sân, thử lại sau nhé.
               </Text>
             )}
           </>
@@ -251,30 +208,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.white,
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
+  },
+  // trạng thái khi nhấn – KHÔNG dùng opacity để khỏi lộ nền xanh phía dưới
+  searchBarPressed: {
+    backgroundColor: "#f1f5f9", // xám rất nhạt
   },
   searchIcon: {
     marginRight: 8,
   },
-  searchInput: {
+  searchPlaceholder: {
     flex: 1,
     fontSize: 14,
-    color: Colors.text,
-  },
-  searchButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
+    color: "#999",
   },
   section: {
     paddingHorizontal: 20,
@@ -284,7 +236,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: Colors.text,
+  },
+  sectionSubtitle: {
+    marginTop: 4,
     marginBottom: 16,
+    fontSize: 13,
+    color: Colors.textSecondary,
   },
   categoryGrid: {
     flexDirection: "row",
@@ -293,7 +250,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptyText: {
-    marginTop: 12,
+    marginTop: 16,
     fontSize: 13,
     color: Colors.textSecondary,
     textAlign: "center",

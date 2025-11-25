@@ -1,13 +1,14 @@
 import apiClient from "./apiClient";
-
-import type { VenueListRequest, VenueListResponse,} from "@/types/venue";
+import type { VenueDetail, VenueListItem, VenueListRequest } from "@/types/venue";
 
 export const venueApi = {
-  async listVenues(params?: VenueListRequest): Promise<VenueListResponse> {
-    const res = await apiClient.get<VenueListResponse>("/venues", {
-      params,
-    });
-    console.log("REQ PARAMS:", params);
+  async listVenues(params?: VenueListRequest): Promise<VenueListItem[]> {
+    const res = await apiClient.get<VenueListItem[]>("/venues", { params });
+    return res.data;
+  },
+
+  async getVenueDetail(id: string): Promise<VenueDetail> {
+    const res = await apiClient.get<VenueDetail>(`/venues/${id}`);
     return res.data;
   },
 };
