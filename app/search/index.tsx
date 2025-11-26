@@ -80,7 +80,7 @@ export default function SearchScreen() {
 
   const handlePressVenue = (venue: VenueListItem) => {
     router.push({
-      pathname: "/",
+      pathname: "/venue/[id]",
       params: { id: venue.id },
     });
   };
