@@ -1,28 +1,36 @@
 import type { Sport } from "./venue";
 
+export interface CourtDetail {
+  id: string;
+  name: string;
+  sport: Sport;
+  pricePerHour: number;
+  imageUrl?: string | null;
+  isActive: boolean;
+}
+
 export interface CourtReviewItem {
   id: string;
   rating: number;
   comment?: string | null;
   userName: string;
-  createdAt?: string | null;
+  createdAt: string;  
 }
 
-export interface CourtDetail {
+
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
+
+export interface CourtReview {
   id: string;
-  name: string;
-  sport?: Sport | null;
-  pricePerHour: number;
-  description?: string | null;
-  imageUrl?: string | null;
-
-  venueId: string;
-  venueName: string;
-  venueAddress: string;
-  venueDistrict?: string | null;
-  venueCity?: string | null;
-
-  avgRating?: number | null;
-  reviewCount?: number | null;
-  reviews: CourtReviewItem[];
+  rating: number;
+  comment: string;
+  userName: string;
+  createdAt: string;
 }

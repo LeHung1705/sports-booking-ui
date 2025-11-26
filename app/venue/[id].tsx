@@ -1,7 +1,7 @@
 import { venueApi } from "@/api/venueApi";
-import type { VenueDetail, VenueDetailCourtItem } from "@/types/venue";
 import CourtCard from "@/components/common/CourtCard";
 import { Colors } from "@/constants/Colors";
+import type { VenueDetail, VenueDetailCourtItem } from "@/types/venue";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -50,8 +50,8 @@ export default function VenueDetailScreen() {
 
   const handlePressCourt = (court: VenueDetailCourtItem) => {
     router.push({
-      pathname: "/courts/[id]",
-      params: { id: court.id },
+      pathname: "/court/[id]",
+      params: { id: court.id, venueId: id},
     });
   };
 
