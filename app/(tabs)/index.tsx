@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import * as Location from "expo-location";
+
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -32,20 +34,38 @@ export default function HomeScreen() {
   const router = useRouter();
   const [venues, setVenues] = useState<VenueListItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchVenues = async () => {
+    const fetchNearbyVenues = async () => {
       setLoading(true);
+      setLocationError(null);
+
       try {
-        const data = await venueApi.listVenues();
-        setVenues(data);
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.log("Location permission not granted");
+          setLocationError("Không truy cập được vị trí, hiển thị tất cả sân.");
+          const all = await venueApi.listVenues();
+          setVenues(all);
+          return;
+        }
+
+        const loc = await Location.getCurrentPositionAsync({});
+        const lat = loc.coords.latitude;
+        const lng = loc.coords.longitude;
+
+        const nearby = await venueApi.listNearbyVenues(lat, lng, 10);
+        setVenues(nearby);
       } catch (error) {
-        console.error("Failed to load venues", error);
+        console.error("Failed to load nearby venues", error);
+        setLocationError("Có lỗi khi tải danh sách sân. Thử lại sau nhé.");
       } finally {
         setLoading(false);
       }
     };
-    fetchVenues();
+
+    fetchNearbyVenues();
   }, []);
 
   const handleOpenSearch = () => {
@@ -132,7 +152,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* VENUES */}
+      {/* VENUES NEARBY */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Sân gần bạn</Text>
         <Text style={styles.sectionSubtitle}>
@@ -146,6 +166,10 @@ export default function HomeScreen() {
           />
         ) : (
           <>
+            {locationError ? (
+              <Text style={styles.infoText}>{locationError}</Text>
+            ) : null}
+
             {venues.map((venue) => (
               <VenueCard
                 key={venue.id}
@@ -154,7 +178,7 @@ export default function HomeScreen() {
               />
             ))}
 
-            {!venues.length && (
+            {!venues.length && !loading && (
               <Text style={styles.emptyText}>
                 Hiện chưa có dữ liệu sân, thử lại sau nhé.
               </Text>
@@ -216,9 +240,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  // trạng thái khi nhấn – KHÔNG dùng opacity để khỏi lộ nền xanh phía dưới
   searchBarPressed: {
-    backgroundColor: "#f1f5f9", // xám rất nhạt
+    backgroundColor: "#f1f5f9",
   },
   searchIcon: {
     marginRight: 8,
@@ -249,8 +272,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 10,
   },
+  infoText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
   emptyText: {
-    marginTop: 16,
+    marginTop: 40,
     fontSize: 13,
     color: Colors.textSecondary,
     textAlign: "center",

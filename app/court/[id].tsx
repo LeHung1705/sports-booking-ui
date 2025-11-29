@@ -22,24 +22,26 @@ export default function CourtDetailScreen() {
   const [court, setCourt] = useState<CourtDetail | null>(null);
   const [reviews, setReviews] = useState<CourtReview[]>([]);
   const [loading, setLoading] = useState(true);
+
   const getSportLabel = (sportKey: string): string => {
     const sportMap: { [key: string]: string } = {
-      "FOOTBALL": "Bóng đá",
-      "VOLLEYBALL": "Bóng chuyền",
-      "BASKETBALL": "Bóng rổ",
-      "BADMINTON": "Cầu lông",
-      "TENNIS": "Tennis",
-      "PICKLEBALL": "Pickleball",
-      "TABLE_TENNIS": "Bóng bàn",
-      "SWIMMING": "Bơi lội",
-      "GYM": "Phòng gym",
-      "YOGA": "Yoga",
-      "MARTIAL_ARTS": "Võ thuật",
-      "OTHER": "Khác"
+      FOOTBALL: "Bóng đá",
+      VOLLEYBALL: "Bóng chuyền",
+      BASKETBALL: "Bóng rổ",
+      BADMINTON: "Cầu lông",
+      TENNIS: "Tennis",
+      PICKLEBALL: "Pickleball",
+      TABLE_TENNIS: "Bóng bàn",
+      SWIMMING: "Bơi lội",
+      GYM: "Phòng gym",
+      YOGA: "Yoga",
+      MARTIAL_ARTS: "Võ thuật",
+      OTHER: "Khác",
     };
 
     return sportMap[sportKey] || sportKey;
   };
+
   useEffect(() => {
     if (!id || !venueId) return;
 
@@ -101,7 +103,6 @@ export default function CourtDetailScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBack} onPress={handleBack}>
           <Ionicons name="chevron-back" size={24} color={Colors.white} />
@@ -126,24 +127,23 @@ export default function CourtDetailScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Main Info Card */}
             <View style={styles.mainCard}>
-              <Text style={styles.courtName}>{court.name}</Text>
+              <View style={styles.courtHeaderRow}>
+                <Text style={styles.courtName}>{court.name}</Text>
 
-              <View style={styles.ratingContainer}>
-                <View style={styles.ratingRow}>
+                <View style={styles.courtRatingInline}>
                   <Ionicons
                     name="star"
-                    size={20}
+                    size={18}
                     color={avgRating ? "#FFB800" : Colors.textSecondary}
                   />
                   {avgRating ? (
                     <>
                       <Text style={styles.ratingValue}>{avgRating.toFixed(1)}</Text>
-                      <Text style={styles.ratingCount}>({reviews.length} đánh giá)</Text>
+                      <Text style={styles.ratingCount}>({reviews.length})</Text>
                     </>
                   ) : (
-                    <Text style={styles.ratingEmpty}>Chưa có đánh giá</Text>
+                    <Text style={styles.ratingEmpty}></Text>
                   )}
                 </View>
               </View>
@@ -169,7 +169,6 @@ export default function CourtDetailScreen() {
               </View>
             </View>
 
-            {/* Reviews Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Đánh giá</Text>
@@ -195,7 +194,6 @@ export default function CourtDetailScreen() {
           </ScrollView>
         </View>
 
-        {/* BOOK NOW FOOTER */}
         <View style={styles.footer}>
           <View style={styles.priceContainer}>
             <Text style={styles.footerPriceLabel}>Chỉ từ</Text>
@@ -319,32 +317,41 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
-  courtName: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: Colors.text,
+  courtHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
-  ratingContainer: {
-    marginBottom: 16,
-  },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  ratingValue: {
-    fontSize: 17,
+  courtName: {
+    flexShrink: 1,
+    fontSize: 22,
     fontWeight: "700",
     color: Colors.text,
+    marginRight: 8,
+    lineHeight: 26,
+  },
+  courtRatingInline: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 0,
+    marginTop: 2,
+  },
+  ratingValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.text,
+    marginLeft: 4,
   },
   ratingCount: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.textSecondary,
+    marginLeft: 4,
   },
   ratingEmpty: {
-    fontSize: 15,
+    fontSize: 13,
     color: Colors.textSecondary,
+    marginLeft: 4,
   },
   divider: {
     height: 1,

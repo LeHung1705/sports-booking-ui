@@ -51,7 +51,7 @@ export default function VenueDetailScreen() {
   const handlePressCourt = (court: VenueDetailCourtItem) => {
     router.push({
       pathname: "/court/[id]",
-      params: { id: court.id, venueId: id},
+      params: { id: court.id, venueId: id },
     });
   };
 
@@ -96,22 +96,24 @@ export default function VenueDetailScreen() {
         )}
 
         <View style={styles.summaryCard}>
-          <Text style={styles.title}>{venue.name}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{venue.name}</Text>
 
-          <View style={styles.ratingRow}>
-            <Ionicons
-              name="star"
-              size={18}
-              color={venue.avgRating != null ? "#ffcc00" : Colors.textSecondary}
-            />
-            {venue.avgRating != null ? (
-              <Text style={styles.ratingText}>
-                {venue.avgRating.toFixed(1)}
-                {venue.reviewCount ? ` (${venue.reviewCount})` : ""}
-              </Text>
-            ) : (
-              <Text style={styles.ratingText}>Chưa có đánh giá</Text>
-            )}
+            <View style={styles.ratingInline}>
+              <Ionicons
+                name="star"
+                size={16}
+                color={venue.avgRating != null ? "#ffcc00" : Colors.textSecondary}
+              />
+              {venue.avgRating != null ? (
+                <Text style={styles.ratingInlineText}>
+                  {venue.avgRating.toFixed(1)}
+                  {venue.reviewCount ? ` (${venue.reviewCount})` : ""}
+                </Text>
+              ) : (
+                <Text style={styles.noRatingText}></Text>
+              )}
+            </View>
           </View>
 
           <View style={styles.infoItem}>
@@ -179,7 +181,6 @@ const styles = StyleSheet.create({
   },
   loadingText: { color: Colors.textSecondary, fontSize: 13 },
   errorText: { color: Colors.textSecondary, fontSize: 14 },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -197,11 +198,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.text,
   },
-
   scrollContent: {
     paddingBottom: 40,
   },
-
   image: { width: "100%", height: 220 },
   imagePlaceholder: {
     backgroundColor: Colors.card,
@@ -209,7 +208,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   imagePlaceholderText: { color: Colors.textSecondary, fontSize: 12 },
-
   summaryCard: {
     backgroundColor: Colors.white,
     marginHorizontal: 16,
@@ -222,22 +220,35 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
   title: {
-    fontSize: 22,
+    flexShrink: 1,
+    fontSize: 20,
     fontWeight: "700",
     color: Colors.text,
-    marginBottom: 8,
+    marginRight: 8,
   },
-  ratingRow: {
+  ratingInline: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 12,
+    flexShrink: 0,
+    marginTop: 2,
   },
-  ratingText: {
-    fontSize: 15,
-    color: Colors.text,
+  ratingInlineText: {
+    fontSize: 14,
     fontWeight: "500",
+    color: Colors.text,
+    marginLeft: 4,
+  },
+  noRatingText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginLeft: 4,
   },
   infoItem: {
     flexDirection: "row",
@@ -268,7 +279,6 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 20,
   },
-
   section: {
     paddingHorizontal: 16,
     marginTop: 20,

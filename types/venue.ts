@@ -1,5 +1,3 @@
-import { Double } from "react-native/Libraries/Types/CodegenTypes";
-
 export type Sport = "FOOTBALL" | "BADMINTON" | "TENNIS" | "BASKETBALL" | "VOLLEYBALL" | "PICKLEBALL";
 
 export interface VenueListRequest {
@@ -16,10 +14,15 @@ export interface VenueListItem {
   id: string;
   name: string;
   address: string;
+  district?: string | null;
+  city?: string | null;
+  phone?: string | null;
   imageUrl?: string;
   avgRating?: number | null;
   minPrice?: number | null;
   maxPrice?: number | null;
+  lat?: number;
+  lng?: number;
 }
 
 export interface VenueDetailCourtItem {
