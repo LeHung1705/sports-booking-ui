@@ -3,17 +3,17 @@ import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { authApi } from "../../api/authApi";
 
@@ -34,7 +34,7 @@ export default function LoginScreen() {
     try {
       const response = await authApi.login({ email, password });
       Alert.alert("Thành công", "Đăng nhập thành công!", [
-        { text: "OK", onPress: () => router.replace("/home") },
+        { text: "OK", onPress: () => router.replace("/(tabs)") },
       ]);
     } catch (error: any) {
       Alert.alert("Lỗi", error.response?.data?.message || "Đăng nhập thất bại");

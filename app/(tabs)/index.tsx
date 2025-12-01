@@ -1,21 +1,21 @@
+import { Colors } from "@/constants/Colors";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  Pressable,
   View,
-  ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { Colors } from "@/constants/Colors";
-import { Ionicons } from "@expo/vector-icons";
 
 import { venueApi } from "@/api/venueApi";
-import type { VenueListItem } from "@/types/venue";
 import { CategoryCard } from "@/components/home/CategoryCard";
 import { VenueCard } from "@/components/home/VenueCard";
+import type { VenueListItem } from "@/types/venue";
 
 const categories = [
   { key: "FOOTBALL", label: "Bóng đá", icon: require("@/assets/icons/football.png") },
