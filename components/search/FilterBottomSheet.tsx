@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,12 @@ import {
   ScrollView,
   Dimensions,
   Modal,
-} from 'react-native';
-import { Colors } from '@/constants/Colors';
-import { Ionicons } from '@expo/vector-icons';
-import type { Sport } from '@/types/venue';
+} from "react-native";
+import { Colors } from "@/constants/Colors";
+import { Ionicons } from "@expo/vector-icons";
+import type { Sport } from "@/types/venue";
 
-const { height: screenHeight } = Dimensions.get('window');
+const { height: screenHeight } = Dimensions.get("window");
 
 const SPORTS: { key: Sport; label: string }[] = [
   { key: "FOOTBALL", label: "Bóng đá" },
@@ -24,7 +24,7 @@ const SPORTS: { key: Sport; label: string }[] = [
 
 const CITIES = [
   "Hà Nội", "Hồ Chí Minh", "Đà Nẵng", "Hải Phòng", "Cần Thơ",
-  "Bình Dương", "Đồng Nai", "Khánh Hòa", "Hải Dương", "Thừa Thiên Huế"
+  "Bình Dương", "Đồng Nai", "Khánh Hòa", "Hải Dương", "Thừa Thiên Huế",
 ];
 
 const RADIUS_OPTIONS = [
@@ -35,60 +35,65 @@ const RADIUS_OPTIONS = [
   { value: 20, label: "20 km" },
 ];
 
+export interface VenueFilterValues {
+  sport?: Sport;
+  city?: string;
+  radius?: number;
+}
+
 interface FilterBottomSheetProps {
   visible: boolean;
   onClose: () => void;
-  onApplyFilters: (filters: { sport?: Sport; city?: string; radius: number }) => void;
-  initialFilters?: { sport?: Sport; city?: string; radius: number };
+  onApplyFilters: (filters: VenueFilterValues) => void;
+  initialFilters?: VenueFilterValues;
 }
 
 export default function FilterBottomSheet({
   visible,
   onClose,
   onApplyFilters,
-  initialFilters = { radius: 5 },
+  initialFilters = {},
 }: FilterBottomSheetProps) {
   const [sport, setSport] = useState<Sport | undefined>(initialFilters.sport);
-  const [city, setCity] = useState<string>(initialFilters.city || '');
-  const [radius, setRadius] = useState<number>(initialFilters.radius);
-
+  const [city, setCity] = useState<string>(initialFilters.city || "");
+  const [radius, setRadius] = useState<number | undefined>(initialFilters.radius);
 
   useEffect(() => {
     if (visible) {
       setSport(initialFilters.sport);
-      setCity(initialFilters.city || '');
+      setCity(initialFilters.city || "");
       setRadius(initialFilters.radius);
     }
   }, [visible, initialFilters]);
 
   const handleReset = () => {
     setSport(undefined);
-    setCity('');
-    setRadius(5);
+    setCity("");
+    setRadius(undefined);
   };
 
   const handleApply = () => {
-    onApplyFilters({ sport, city, radius });
+    onApplyFilters({
+      sport,
+      city: city || undefined,
+      radius,
+    });
   };
 
-  const getActiveFiltersCount = () => {
+  const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (sport) count++;
-    if (city) count++;
-    if (radius !== 5) count++;
+    if (city.trim()) count++;
+    if (radius != null) count++;
     return count;
-  };
+  }, [sport, city, radius]);
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.container}>
-          {/* Header */}
+
+          {/* HEADER */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={20} color={Colors.text} />
@@ -99,9 +104,9 @@ export default function FilterBottomSheet({
             </TouchableOpacity>
           </View>
 
-          {/* Content */}
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* Sport Filter */}
+
+            {/* SPORT */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Môn thể thao</Text>
               <View style={styles.optionsGrid}>
@@ -114,10 +119,12 @@ export default function FilterBottomSheet({
                     ]}
                     onPress={() => setSport(sport === item.key ? undefined : item.key)}
                   >
-                    <Text style={[
-                      styles.optionText,
-                      sport === item.key && styles.optionTextActive,
-                    ]}>
+                    <Text
+                      style={[
+                        styles.optionText,
+                        sport === item.key && styles.optionTextActive,
+                      ]}
+                    >
                       {item.label}
                     </Text>
                   </TouchableOpacity>
@@ -125,7 +132,7 @@ export default function FilterBottomSheet({
               </View>
             </View>
 
-            {/* City Filter */}
+            {/* CITY */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Thành phố</Text>
               <View style={styles.optionsGrid}>
@@ -136,12 +143,14 @@ export default function FilterBottomSheet({
                       styles.optionButton,
                       city === item && styles.optionButtonActive,
                     ]}
-                    onPress={() => setCity(city === item ? '' : item)}
+                    onPress={() => setCity(city === item ? "" : item)}
                   >
-                    <Text style={[
-                      styles.optionText,
-                      city === item && styles.optionTextActive,
-                    ]}>
+                    <Text
+                      style={[
+                        styles.optionText,
+                        city === item && styles.optionTextActive,
+                      ]}
+                    >
                       {item}
                     </Text>
                   </TouchableOpacity>
@@ -149,7 +158,7 @@ export default function FilterBottomSheet({
               </View>
             </View>
 
-            {/* Radius Filter */}
+            {/* RADIUS */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Bán kính tìm kiếm</Text>
               <View style={styles.optionsGrid}>
@@ -160,12 +169,14 @@ export default function FilterBottomSheet({
                       styles.optionButton,
                       radius === item.value && styles.optionButtonActive,
                     ]}
-                    onPress={() => setRadius(item.value)}
+                    onPress={() => setRadius(radius === item.value ? undefined : item.value)}
                   >
-                    <Text style={[
-                      styles.optionText,
-                      radius === item.value && styles.optionTextActive,
-                    ]}>
+                    <Text
+                      style={[
+                        styles.optionText,
+                        radius === item.value && styles.optionTextActive,
+                      ]}
+                    >
                       {item.label}
                     </Text>
                   </TouchableOpacity>
@@ -174,17 +185,17 @@ export default function FilterBottomSheet({
             </View>
           </ScrollView>
 
-          {/* Footer */}
+          {/* FOOTER */}
           <View style={styles.footer}>
-            <TouchableOpacity 
-              style={styles.applyButton}
-              onPress={handleApply}
-            >
+            <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
               <Text style={styles.applyButtonText}>
-                Áp dụng bộ lọc {getActiveFiltersCount() > 0 && `(${getActiveFiltersCount()})`}
+                {activeFiltersCount > 0
+                  ? `Áp dụng bộ lọc (${activeFiltersCount})`
+                  : "Áp dụng bộ lọc"}
               </Text>
             </TouchableOpacity>
           </View>
+
         </View>
       </View>
     </Modal>
@@ -192,11 +203,7 @@ export default function FilterBottomSheet({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   container: {
     backgroundColor: Colors.background,
     borderTopLeftRadius: 16,
@@ -204,46 +211,22 @@ const styles = StyleSheet.create({
     maxHeight: screenHeight * 0.85,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
     backgroundColor: Colors.white,
   },
-  closeButton: {
-    padding: 4,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  resetText: {
-    color: Colors.primary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  content: {
-    padding: 16,
-    maxHeight: screenHeight * 0.6,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 12,
-  },
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+  closeButton: { padding: 4 },
+  title: { fontSize: 16, fontWeight: "600", color: Colors.text },
+  resetText: { color: Colors.primary, fontSize: 14, fontWeight: "500" },
+  content: { padding: 16 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, marginBottom: 12 },
+  optionsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   optionButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -252,20 +235,11 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
     minWidth: 80,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  optionButtonActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  optionText: {
-    fontSize: 13,
-    color: Colors.text,
-    fontWeight: '500',
-  },
-  optionTextActive: {
-    color: Colors.white,
-  },
+  optionButtonActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  optionText: { fontSize: 13, color: Colors.text, fontWeight: "500" },
+  optionTextActive: { color: Colors.white },
   footer: {
     padding: 16,
     backgroundColor: Colors.white,
@@ -276,11 +250,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     paddingVertical: 12,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  applyButtonText: {
-    color: Colors.white,
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  applyButtonText: { color: Colors.white, fontSize: 15, fontWeight: "600" },
 });

@@ -1,4 +1,3 @@
-// components/home/BannerSlider.tsx
 import React, { useRef, useState } from "react";
 import { View, ScrollView, Image, StyleSheet, NativeScrollEvent, NativeSyntheticEvent, Dimensions, } from "react-native";
 import { Colors } from "@/constants/Colors";
