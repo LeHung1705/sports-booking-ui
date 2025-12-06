@@ -9,6 +9,11 @@ export interface VenueListRequest {
   lng?: number;
 }
 
+export interface PricingRule {
+  startTime: string; // "HH:mm"
+  endTime: string;   // "HH:mm"
+  pricePerHour: number;
+}
 
 export interface VenueListItem {
   id: string;
@@ -45,6 +50,7 @@ export interface VenueDetail {
   avgRating?: number | null;
   reviewCount?: number | null;
   courts: VenueDetailCourtItem[];
+  pricingConfig?: PricingRule[];
 }
 
 export type VenueListResponse = VenueListItem[];

@@ -47,7 +47,7 @@ export default function CourtCard({ court, onPress }: CourtCardProps) {
           <Text style={styles.priceRow}>
             <Text style={styles.priceLabel}>Giá: </Text>
             <Text style={styles.priceValue}>
-              {court.pricePerHour.toLocaleString()} đ/giờ
+              {court.pricePerHour ? court.pricePerHour.toLocaleString() : 0} đ/giờ
             </Text>
           </Text>
         </View>
@@ -60,7 +60,7 @@ export default function CourtCard({ court, onPress }: CourtCardProps) {
           activeOpacity={0.85}
           onPress={onPress}
         >
-          <Text style={styles.primaryButtonText}>Xem chi tiết</Text>
+          <Text style={styles.primaryButtonText}>Đặt sân</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

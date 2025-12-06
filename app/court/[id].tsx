@@ -70,7 +70,14 @@ export default function CourtDetailScreen() {
   };
 
   const handleBookNow = () => {
-    console.log("Book court", court?.id);
+    router.push({
+        pathname: "/booking/schedule",
+        params: { 
+            venueId: venueId,
+            courtId: court?.id,
+            venueName: court?.name 
+        }
+    });
   };
 
   const avgRating = useMemo(() => {
