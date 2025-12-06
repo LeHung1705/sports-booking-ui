@@ -4,7 +4,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 // ⚠️ QUAN TRỌNG: Đổi thành IP máy bạn
 // Windows: ipconfig → IPv4 Address
 // Mac: ifconfig getifaddr en0
-const API_BASE_URL = "http://172.20.10.6:8080/api/v1";
+const API_BASE_URL = "http://192.168.1.8:8080/api/v1";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -25,7 +25,10 @@ apiClient.interceptors.request.use(
       
       // Log request (chỉ trong dev)
       if (__DEV__) {
-        console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
+        const fullUrl = config.params 
+          ? `${config.url}?${new URLSearchParams(config.params).toString()}`
+          : config.url;
+        console.log(`📤 ${config.method?.toUpperCase()} ${fullUrl}`);
       }
     } catch (error) {
       console.error("❌ Error loading token:", error);

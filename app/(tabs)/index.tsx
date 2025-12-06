@@ -37,35 +37,62 @@ export default function HomeScreen() {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchNearbyVenues = async () => {
-      setLoading(true);
-      setLocationError(null);
+      if (isMounted) setLoading(true);
+      if (isMounted) setLocationError(null);
 
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
           console.log("Location permission not granted");
-          setLocationError("Không truy cập được vị trí, hiển thị tất cả sân.");
+          if (isMounted) setLocationError("Không truy cập được vị trí, hiển thị tất cả sân.");
           const all = await venueApi.listVenues();
-          setVenues(all);
+          if (isMounted) setVenues(all);
           return;
         }
 
-        const loc = await Location.getCurrentPositionAsync({});
-        const lat = loc.coords.latitude;
-        const lng = loc.coords.longitude;
+        // 1. Try last known position (fast)
+        let loc = await Location.getLastKnownPositionAsync({});
 
-        const nearby = await venueApi.listNearbyVenues(lat, lng, 10);
-        setVenues(nearby);
+        // 2. If no last known, try current position with timeout
+        if (!loc) {
+            const timeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error("Location timeout")), 5000)
+            );
+            try {
+                const locationPromise = Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                // @ts-ignore
+                loc = await Promise.race([locationPromise, timeout]);
+            } catch (e) {
+                console.warn("Location request timed out or failed");
+            }
+        }
+
+        if (loc) {
+            const lat = loc.coords.latitude;
+            const lng = loc.coords.longitude;
+            console.log(`Getting venues near: ${lat}, ${lng}`);
+            const nearby = await venueApi.listNearbyVenues(lat, lng, 10);
+            if (isMounted) setVenues(nearby);
+        } else {
+            // Fallback if location completely fails
+             if (isMounted) setLocationError("Không lấy được vị trí hiện tại, hiển thị tất cả sân.");
+             const all = await venueApi.listVenues();
+             if (isMounted) setVenues(all);
+        }
+
       } catch (error) {
         console.error("Failed to load nearby venues", error);
-        setLocationError("Có lỗi khi tải danh sách sân. Thử lại sau nhé.");
+        if (isMounted) setLocationError("Có lỗi khi tải danh sách sân. Thử lại sau nhé.");
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchNearbyVenues();
+    return () => { isMounted = false; };
   }, []);
 
   const handleOpenSearch = () => {

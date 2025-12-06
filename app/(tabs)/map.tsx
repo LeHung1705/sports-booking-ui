@@ -1,23 +1,23 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
+import { Stack, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
+  Image,
   Linking,
   Platform,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Image,
-  Dimensions,
-  StatusBar,
 } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
-import * as Location from "expo-location";
-import { Stack, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 
-import { Colors } from "@/constants/Colors";
 import { venueApi } from "@/api/venueApi";
+import { Colors } from "@/constants/Colors";
 import type { VenueListItem } from "@/types/venue";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -100,19 +100,42 @@ export default function MapScreen() {
     else router.push("/");
   };
 
-  const handleOpenDirections = useCallback((venue: VenueListItem) => {
+  const handleOpenDirections = useCallback(async (venue: VenueListItem) => {
     if (venue.lat == null || venue.lng == null) return;
 
     const lat = venue.lat;
     const lng = venue.lng;
     const label = encodeURIComponent(venue.name);
 
-    const url =
-      Platform.OS === "ios"
-        ? `http://maps.apple.com/?ll=${lat},${lng}&q=${label}`
-        : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+    const googleAppUrlIOS = `comgooglemaps://?daddr=${lat},${lng}&directionsmode=driving`;
+    const googleAppUrlAndroid = `google.navigation:q=${lat},${lng}&mode=d`;
 
-    Linking.openURL(url).catch((err) => console.error("Open map failed", err));
+    // Fallback
+    const googleWebUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+    const appleMapsUrl = `http://maps.apple.com/?daddr=${lat},${lng}&q=${label}&dirflg=d&mapmode=standard`;
+
+    try {
+      if (Platform.OS === "ios") {
+        
+        const hasGoogleMaps = await Linking.canOpenURL("comgooglemaps://");
+        if (hasGoogleMaps) {
+          await Linking.openURL(googleAppUrlIOS);
+          return;
+        }
+        await Linking.openURL(appleMapsUrl);
+        return;
+      }
+
+      const hasGoogleNav = await Linking.canOpenURL("google.navigation:");
+      if (hasGoogleNav) {
+        await Linking.openURL(googleAppUrlAndroid);
+        return;
+      }
+
+      await Linking.openURL(googleWebUrl);
+    } catch (err) {
+      console.error("Open map failed", err);
+    }
   }, []);
 
   const handleViewDetail = useCallback(
@@ -274,7 +297,7 @@ const VenueBottomCard = React.memo(
   }) => {
     return (
       <View style={styles.bottomCard}>
-        
+
         <TouchableOpacity
           onPress={onClose}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -464,7 +487,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     maxHeight: SCREEN_HEIGHT * 0.45,
     paddingHorizontal: 16,
-    paddingTop: 24, 
+    paddingTop: 24,
     paddingBottom: Platform.OS === "ios" ? 24 : 16,
   },
 

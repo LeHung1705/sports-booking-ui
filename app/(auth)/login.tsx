@@ -1,5 +1,6 @@
 // app/screens/LoginScreen.tsx
 import { FontAwesome } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -33,6 +34,11 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const response = await authApi.login({ email, password });
+
+      if (response.data && response.data.accessToken) {
+        await AsyncStorage.setItem("accessToken", response.data.accessToken);
+      }
+
       Alert.alert("Thành công", "Đăng nhập thành công!", [
         { text: "OK", onPress: () => router.replace("/(tabs)") },
       ]);
@@ -92,7 +98,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity onPress={() => router.push("./screens/ForgotPasswordScreen")}>
+          <TouchableOpacity onPress={() => router.push("./forgot-password")}>
             <Text style={styles.forgot}>Quên mật khẩu?</Text>
           </TouchableOpacity>
 
@@ -127,7 +133,7 @@ export default function LoginScreen() {
         {/* Register */}
         <View style={styles.registerContainer}>
           <Text style={styles.registerText}>Bạn chưa có tài khoản? </Text>
-          <TouchableOpacity onPress={() => router.push("./screens/RegisterScreen")}>
+          <TouchableOpacity onPress={() => router.push("./register")}>
             <Text style={styles.registerLink}>Đăng ký</Text>
           </TouchableOpacity>
         </View>
