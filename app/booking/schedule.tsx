@@ -147,7 +147,7 @@ export default function ScheduleScreen() {
         venueId,
         date: selectedDate.toISOString(),
         slots: JSON.stringify(selectedSlotsData),
-        totalPrice,
+        totalAmount: totalPrice,
       },
     });
   };
@@ -205,9 +205,15 @@ export default function ScheduleScreen() {
              // Find slot matching this time
              const slot = item.slots.find(s => s.time === time);
              
+             // Check if slot is in the past
+             const [hours, minutes] = time.split(':').map(Number);
+             const slotDateTime = new Date(selectedDate);
+             slotDateTime.setHours(hours, minutes, 0, 0);
+             const isPast = slotDateTime < new Date();
+
              if (!slot) {
                  return (
-                     <View key={time} style={[styles.slotCell, styles.slotBooked]}>
+                     <View key={time} style={[styles.slotCell, isPast ? styles.slotPast : styles.slotBooked]}>
                          <Text style={styles.slotBookedText}>-</Text>
                      </View>
                  );
@@ -217,6 +223,7 @@ export default function ScheduleScreen() {
              // Case-insensitive status check
              const status = slot.status?.toLowerCase();
              const isBooked = status === 'booked';
+             const isUnavailable = isBooked || isPast;
              const priceDisplay = (slot.price / 1000).toFixed(0) + 'k';
              
              return (
@@ -225,12 +232,13 @@ export default function ScheduleScreen() {
                  style={[
                    styles.slotCell,
                    isBooked && styles.slotBooked,
+                   isPast && styles.slotPast,
                    isSelected && styles.slotSelected
                  ]}
-                 disabled={isBooked}
+                 disabled={isUnavailable}
                  onPress={() => handleToggleSlot(slot)}
                >
-                 {!isBooked ? (
+                 {!isUnavailable ? (
                     <Text style={[
                         styles.slotPriceText, 
                         isSelected && styles.slotPriceTextSelected
@@ -238,7 +246,7 @@ export default function ScheduleScreen() {
                         {priceDisplay}
                     </Text>
                  ) : (
-                    <Text style={styles.slotBookedText}>Đã đặt</Text>
+                    <Text style={styles.slotBookedText}>{isBooked ? "Đã đặt" : "Đã qua"}</Text>
                  )}
                </TouchableOpacity>
              );
@@ -278,6 +286,10 @@ export default function ScheduleScreen() {
           <View style={styles.noteItem}>
               <View style={[styles.noteBox, styles.slotBooked]} />
               <Text style={styles.noteText}>Đã đặt</Text>
+          </View>
+          <View style={styles.noteItem}>
+              <View style={[styles.noteBox, styles.slotPast]} />
+              <Text style={styles.noteText}>Đã qua</Text>
           </View>
           <View style={styles.noteItem}>
               <View style={[styles.noteBox, { borderColor: '#ddd', borderWidth: 1 }]} />
@@ -458,6 +470,9 @@ const styles = StyleSheet.create({
   },
   slotBooked: {
     backgroundColor: '#E5E7EB',
+  },
+  slotPast: {
+    backgroundColor: '#D1D5DB',
   },
   slotSelected: {
     backgroundColor: Colors.primary,

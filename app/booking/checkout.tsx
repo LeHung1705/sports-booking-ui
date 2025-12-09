@@ -1,23 +1,23 @@
 import { bookingApi } from "@/api/bookingApi";
+import { voucherApi } from "@/api/voucherApi"; // Added
 import { Colors } from "@/constants/Colors";
 import { BookingPayload } from "@/types/booking";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView // Added SafeAreaView import
-    ,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 
 export default function CheckoutScreen() {
@@ -33,14 +33,42 @@ export default function CheckoutScreen() {
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "TRANSFER">("CASH");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Voucher State
+  const [voucherCode, setVoucherCode] = useState("");
+  const [discount, setDiscount] = useState(0);
+  const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
+  const [voucherError, setVoucherError] = useState("");
+
   // Parse Params
   const selectedSlots = params.slots ? JSON.parse(params.slots) : [];
   const dateObj = new Date(params.date);
   const formattedDate = `Thứ ${dateObj.getDay() + 1}, ${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
   const totalAmount = parseInt(params.totalAmount || "0");
 
-  // Group slots by court for nicer display
-  // In this simple UI, we just list them.
+  const handleCheckVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setIsCheckingVoucher(true);
+    setVoucherError("");
+    setDiscount(0);
+
+    try {
+        console.log("🔍 CHECKING VOUCHER Payload:", { code: voucherCode, order_amount: totalAmount, venue_id: params.venueId });
+        const res = await voucherApi.previewVoucher(voucherCode, totalAmount, params.venueId);
+        if (res.valid) {
+            setDiscount(res.discount);
+            Alert.alert("Thành công", `Áp dụng mã giảm giá: -${(res.discount / 1000).toLocaleString()}k`);
+        } else {
+            setVoucherError(res.reason || "Voucher không hợp lệ");
+            Alert.alert("Lỗi", res.reason || "Voucher không hợp lệ");
+        }
+    } catch (error: any) {
+        console.log("Voucher check error:", error);
+        setVoucherError("Lỗi kiểm tra voucher");
+        Alert.alert("Lỗi", "Không thể kiểm tra voucher lúc này");
+    } finally {
+        setIsCheckingVoucher(false);
+    }
+  };
 
   const handleConfirm = async () => {
     if (isSubmitting) return;
@@ -57,7 +85,8 @@ export default function CheckoutScreen() {
         
         // 2. Calculate Start Time (First Slot)
         const firstSlot = selectedSlots[0];
-        const startTimeISO = `${datePart}T${firstSlot.time}:00+07:00`;
+        // Clean format for LocalDateTime: "2025-12-14T09:00:00" (No offset)
+        const startTimeISO = `${datePart}T${firstSlot.time}:00`;
 
         // 3. Calculate End Time (Last Slot + 30 mins)
         const lastSlot = selectedSlots[selectedSlots.length - 1];
@@ -73,7 +102,7 @@ export default function CheckoutScreen() {
         }
 
         const endTimeFormatted = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
-        const endTimeISO = `${datePart}T${endTimeFormatted}:00+07:00`;
+        const endTimeISO = `${datePart}T${endTimeFormatted}:00`;
 
         const payload: BookingPayload = {
             court_id: courtId,
@@ -81,12 +110,20 @@ export default function CheckoutScreen() {
             end_time: endTimeISO,
         };
 
-        // 4. Debug Logging
-        console.log(`Booking Range: ${startTimeISO} - ${endTimeISO}`);
-        console.log("🚀 SENDING PAYLOAD:", JSON.stringify(payload, null, 2));
-        console.log("🚀 [FE] RAW JSON PAYLOAD:", JSON.stringify(payload, null, 2));
+        // 4. Create Booking
+        const bookingRes = await bookingApi.createBooking(payload);
+        const bookingId = bookingRes.id;
 
-        const res = await bookingApi.createBooking(payload);
+        // 5. Apply Voucher (if valid discount exists)
+        if (discount > 0 && voucherCode) {
+            try {
+                await bookingApi.applyVoucher(bookingId, voucherCode);
+                console.log("✅ Voucher applied successfully to booking", bookingId);
+            } catch (voucherErr) {
+                console.error("❌ Failed to apply voucher:", voucherErr);
+                Alert.alert("Lưu ý", "Đã đặt sân thành công nhưng áp dụng voucher thất bại. Vui lòng liên hệ nhân viên.");
+            }
+        }
         
         router.replace("/booking/success");
 
@@ -140,12 +177,64 @@ export default function CheckoutScreen() {
                 ))}
 
                 <View style={styles.divider} />
+
+                {/* Voucher Section inside Card */}
+                <View style={styles.voucherSection}>
+                     <View style={styles.voucherInputRow}>
+                        <TextInput
+                            style={styles.voucherInput}
+                            placeholder="Mã giảm giá"
+                            placeholderTextColor="#999"
+                            value={voucherCode}
+                            onChangeText={(text) => {
+                                setVoucherCode(text);
+                                if (discount > 0) setDiscount(0); // Reset discount if code changes
+                                if (voucherError) setVoucherError("");
+                            }}
+                            autoCapitalize="characters"
+                        />
+                        <TouchableOpacity 
+                            style={[
+                                styles.applyButton, 
+                                (!voucherCode || isCheckingVoucher) && styles.applyButtonDisabled
+                            ]}
+                            onPress={handleCheckVoucher}
+                            disabled={!voucherCode || isCheckingVoucher}
+                        >
+                            {isCheckingVoucher ? (
+                                <ActivityIndicator color="#fff" size="small" />
+                            ) : (
+                                <Text style={styles.applyButtonText}>Áp dụng</Text>
+                            )}
+                        </TouchableOpacity>
+                     </View>
+                     {discount > 0 && <Text style={styles.successText}>Đã áp dụng giảm giá</Text>}
+                     {voucherError ? <Text style={styles.errorText}>{voucherError}</Text> : null}
+                </View>
+
+                <View style={styles.divider} />
                 
                 {/* Total */}
                 <View style={styles.totalRow}>
-                    <Text style={styles.totalLabel}>Tổng cộng</Text>
+                    <Text style={styles.totalLabel}>Tạm tính</Text>
                     <Text style={styles.totalValue}>
                         {totalAmount.toLocaleString("vi-VN")} đ
+                    </Text>
+                </View>
+
+                {discount > 0 && (
+                    <View style={styles.totalRow}>
+                        <Text style={styles.totalLabel}>Giảm giá</Text>
+                        <Text style={[styles.totalValue, { color: Colors.primary }]}>
+                            - {discount.toLocaleString("vi-VN")} đ
+                        </Text>
+                    </View>
+                )}
+
+                <View style={[styles.totalRow, { marginTop: 12 }]}>
+                    <Text style={[styles.totalLabel, { fontWeight: "bold", fontSize: 18 }]}>Tổng thanh toán</Text>
+                    <Text style={[styles.totalValue, { fontSize: 22, color: Colors.primary }]}>
+                        {(totalAmount - discount).toLocaleString("vi-VN")} đ
                     </Text>
                 </View>
             </View>
@@ -371,5 +460,50 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  // Voucher Styles
+  voucherSection: {
+    marginVertical: 4,
+  },
+  voucherInputRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  voucherInput: {
+    flex: 1,
+    height: 44,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    backgroundColor: "#F9FAFB",
+    textTransform: "uppercase",
+  },
+  applyButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+    borderRadius: 8,
+    height: 44,
+  },
+  applyButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  applyButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  successText: {
+    color: Colors.primary,
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: "500",
+  },
+  errorText: {
+    color: "red",
+    fontSize: 12,
+    marginTop: 4,
   },
 });

@@ -5,6 +5,7 @@ import {
     BookingPayload, 
     BookingResponse 
 } from "../types/booking";
+import { BookingApplyVoucherResponse } from "../types/voucher";
 
 export const bookingApi = {
   /**
@@ -43,6 +44,26 @@ export const bookingApi = {
     const res = await apiClient.get<ApiVenueAvailabilityResponse>(`/venues/${venueId}/availability`, {
         params: { date }
     });
+    return res.data;
+  },
+
+  /**
+   * Apply a voucher to a booking
+   * PUT /api/v1/bookings/{id}/apply-voucher
+   */
+  applyVoucher: async (bookingId: string, voucherCode: string): Promise<BookingApplyVoucherResponse> => {
+    const res = await apiClient.put<BookingApplyVoucherResponse>(`/bookings/${bookingId}/apply-voucher`, {
+      voucher_code: voucherCode
+    });
+    return res.data;
+  },
+
+  /**
+   * Remove a voucher from a booking
+   * PUT /api/v1/bookings/{id}/remove-voucher
+   */
+  removeVoucher: async (bookingId: string): Promise<any> => {
+    const res = await apiClient.put(`/bookings/${bookingId}/remove-voucher`);
     return res.data;
   }
 };
