@@ -4,7 +4,7 @@ export interface LoginRequest {
   }
   
   export interface LoginResponse {
-    access_token: string;
+    accessToken: string;
     user: {
       email: string;
       full_name: string;

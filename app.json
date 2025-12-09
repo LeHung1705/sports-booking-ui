@@ -38,6 +38,12 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow TechBo to use your location to find nearby sports venues."
+        }
       ]
     ],
     "experiments": {

@@ -32,5 +32,5 @@ export default function Index() {
   }
 
   // Điều hướng: Có token -> Tabs (Home), Chưa -> Login
-  return <Redirect href={isAuthenticated ? "/home" : "/login"} />;
+  return <Redirect href={isAuthenticated ? "/(tabs)" : "/login"} />;
 }
