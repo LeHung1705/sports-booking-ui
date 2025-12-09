@@ -54,7 +54,7 @@ export default function VenueDetailScreen() {
       params: {
         venueId: id,
         courtId: court.id,
-        venueName: venue.name
+        venueName: venue?.name
       },
     });
   };

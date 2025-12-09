@@ -49,29 +49,31 @@ export default function CheckoutScreen() {
     try {
         if (selectedSlots.length === 0) return;
 
-        // Sort slots by time
+        // 1. Sort slots to ensure chronological order
         selectedSlots.sort((a: any, b: any) => a.time.localeCompare(b.time));
 
         const courtId = selectedSlots[0].courtId;
         const datePart = params.date.split("T")[0]; // YYYY-MM-DD
         
-        // Helper to format manually to: YYYY-MM-DDTHH:mm:ss+07:00
-        const formatISO = (dateStr: string, timeStr: string) => {
-            // Ensure timeStr is HH:mm (5 chars)
-            const safeTime = timeStr.substring(0, 5); 
-            return `${dateStr}T${safeTime}:00+07:00`;
-        };
+        // 2. Calculate Start Time (First Slot)
+        const firstSlot = selectedSlots[0];
+        const startTimeISO = `${datePart}T${firstSlot.time}:00+07:00`;
 
-        // Start Time of first slot
-        const firstTime = selectedSlots[0].time; // "05:00"
-        const startTimeISO = formatISO(datePart, firstTime);
-        
-        // End Time of LAST slot
-        // Note: Backend already returns 'endTime' for the slot (e.g. "05:30")
-        // So we just use that directly.
+        // 3. Calculate End Time (Last Slot + 30 mins)
         const lastSlot = selectedSlots[selectedSlots.length - 1];
-        const endTimeStr = lastSlot.endTime; 
-        const endTimeISO = formatISO(datePart, endTimeStr);
+        const [lastHourStr, lastMinuteStr] = lastSlot.time.split(":");
+        let endHour = parseInt(lastHourStr, 10);
+        let endMinute = parseInt(lastMinuteStr, 10);
+
+        // Add 30 minutes for the last slot duration
+        endMinute += 30;
+        if (endMinute >= 60) {
+            endHour += 1;
+            endMinute -= 60;
+        }
+
+        const endTimeFormatted = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+        const endTimeISO = `${datePart}T${endTimeFormatted}:00+07:00`;
 
         const payload: BookingPayload = {
             court_id: courtId,
@@ -79,7 +81,10 @@ export default function CheckoutScreen() {
             end_time: endTimeISO,
         };
 
-        console.log("Booking Payload:", payload);
+        // 4. Debug Logging
+        console.log(`Booking Range: ${startTimeISO} - ${endTimeISO}`);
+        console.log("🚀 SENDING PAYLOAD:", JSON.stringify(payload, null, 2));
+        console.log("🚀 [FE] RAW JSON PAYLOAD:", JSON.stringify(payload, null, 2));
 
         const res = await bookingApi.createBooking(payload);
         

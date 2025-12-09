@@ -4,21 +4,19 @@ import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
-  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
+import { venueApi } from "@/api/venueApi";
 import { Colors } from "@/constants/Colors";
 import { TimeTableData, TimeTableSlot } from "@/types/booking";
 import { transformToTimeTable } from "@/utils/bookingUtils";
-import { venueApi } from "@/api/venueApi";
-import { VenueDetailCourtItem } from "@/types/venue";
 
 // --- HELPER: Generate next 14 days ---
 const getNextDays = (days: number) => {
@@ -34,7 +32,15 @@ const getNextDays = (days: number) => {
 const DATES = getNextDays(14);
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const START_HOUR = 6;
-const END_HOUR = 22;
+const END_HOUR = 23;
+
+// Generate 30-minute intervals: 06:00, 06:30, ... 22:30
+const TIME_SLOTS: string[] = [];
+for (let h = START_HOUR; h < END_HOUR; h++) {
+  TIME_SLOTS.push(`${h.toString().padStart(2, '0')}:00`);
+  TIME_SLOTS.push(`${h.toString().padStart(2, '0')}:30`);
+}
+
 const SLOT_WIDTH = 80;
 const LEFT_COLUMN_WIDTH = 80;
 
@@ -59,14 +65,31 @@ export default function ScheduleScreen() {
         const dateStr = selectedDate.toISOString().split("T")[0];
         const availabilityData = await venueApi.getVenueAvailability(venueId as string, dateStr);
 
+        // DEBUG: Log API response thoroughly
+        console.log("🔥 API RAW RESPONSE:", JSON.stringify(availabilityData, null, 2));
+
+        if (Array.isArray(availabilityData) && availabilityData.length > 0) {
+          console.log('=== CHECK SPECIFIC SLOTS (07:00 - 09:00) ===');
+          availabilityData[0].slots?.forEach((slot: any) => {
+             // Check if time is between 07:00 and 09:00
+             if (slot.time >= "07:00" && slot.time <= "09:00") {
+                console.log(`⏰ CHECK SLOT: ${slot.time} - Status: ${slot.status} - Price: ${slot.price}`);
+             }
+          });
+        }
+        else console.log("No availability data received from API.");
+
         // Transform to Table UI
         const table = transformToTimeTable(availabilityData, selectedDate);
+        console.log('=== TRANSFORMED TABLE ===');
+        if (table.length > 0 && table[0].slots.length > 0) {
+          console.log('First transformed slot:', table[0].slots[0]);
+        }
         setTableData(table);
         setSelectedSlotIds([]); 
 
       } catch (e) {
         console.error("Load schedule failed", e);
-        // Alert.alert("Lỗi", "Không thể tải lịch sân"); // Optional: suppress if simple navigation error
       } finally {
         setLoading(false);
       }
@@ -76,7 +99,9 @@ export default function ScheduleScreen() {
   }, [venueId, selectedDate]);
 
   const handleToggleSlot = (slot: TimeTableSlot) => {
-    if (slot.status === 'booked') return;
+    // Normalize status check - handle both lowercase and uppercase
+    const status = slot.status?.toLowerCase();
+    if (status === 'booked') return;
 
     setSelectedSlotIds((prev) => {
       if (prev.includes(slot.slotId)) {
@@ -89,7 +114,6 @@ export default function ScheduleScreen() {
 
   // Calculate total price
   const totalPrice = selectedSlotIds.reduce((sum, id) => {
-    // Find slot across all rows
     for (const row of tableData) {
       const found = row.slots.find(s => s.slotId === id);
       if (found) return sum + found.price;
@@ -148,20 +172,16 @@ export default function ScheduleScreen() {
     );
   };
 
-  // Header Row: Hours
+  // Header Row: Hours (30 mins)
   const renderHeaderRow = () => {
-    const hours = [];
-    for (let h = START_HOUR; h < END_HOUR; h++) {
-      hours.push(h);
-    }
     return (
       <View style={styles.headerRow}>
         {/* Placeholder for left column */}
         <View style={{ width: LEFT_COLUMN_WIDTH, backgroundColor: '#f9f9f9', borderRightWidth: 1, borderColor: '#eee' }} />
         
-        {hours.map(h => (
-          <View key={h} style={styles.headerCell}>
-            <Text style={styles.headerTimeText}>{h.toString().padStart(2,'0')}:00</Text>
+        {TIME_SLOTS.map(time => (
+          <View key={time} style={styles.headerCell}>
+            <Text style={styles.headerTimeText}>{time}</Text>
           </View>
         ))}
       </View>
@@ -181,9 +201,22 @@ export default function ScheduleScreen() {
 
         {/* Scrollable Slots */}
         <View style={styles.slotsRow}>
-          {item.slots.map((slot) => {
+          {TIME_SLOTS.map((time) => {
+             // Find slot matching this time
+             const slot = item.slots.find(s => s.time === time);
+             
+             if (!slot) {
+                 return (
+                     <View key={time} style={[styles.slotCell, styles.slotBooked]}>
+                         <Text style={styles.slotBookedText}>-</Text>
+                     </View>
+                 );
+             }
+
              const isSelected = selectedSlotIds.includes(slot.slotId);
-             const isBooked = slot.status === 'booked';
+             // Case-insensitive status check
+             const status = slot.status?.toLowerCase();
+             const isBooked = status === 'booked';
              const priceDisplay = (slot.price / 1000).toFixed(0) + 'k';
              
              return (
@@ -197,13 +230,15 @@ export default function ScheduleScreen() {
                  disabled={isBooked}
                  onPress={() => handleToggleSlot(slot)}
                >
-                 {!isBooked && (
+                 {!isBooked ? (
                     <Text style={[
                         styles.slotPriceText, 
                         isSelected && styles.slotPriceTextSelected
                     ]}>
                         {priceDisplay}
                     </Text>
+                 ) : (
+                    <Text style={styles.slotBookedText}>Đã đặt</Text>
                  )}
                </TouchableOpacity>
              );
@@ -264,7 +299,7 @@ export default function ScheduleScreen() {
               data={tableData}
               renderItem={renderRowItem}
               keyExtractor={item => item.courtId}
-              scrollEnabled={false} // Use parent ScrollView if needed, or allow vertical scroll
+              scrollEnabled={false}
             />
           </View>
         </ScrollView>
@@ -397,7 +432,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRightWidth: 1,
     borderRightColor: '#E5E7EB',
-    position: 'absolute', // Sticky implementation simpler with separate view
+    position: 'absolute',
     left: 0, 
     top: 0,
     bottom: 0,
@@ -410,7 +445,7 @@ const styles = StyleSheet.create({
   },
   slotsRow: {
     flexDirection: 'row',
-    marginLeft: LEFT_COLUMN_WIDTH, // Offset for sticky column
+    marginLeft: LEFT_COLUMN_WIDTH,
   },
   slotCell: {
     width: SLOT_WIDTH,
@@ -435,6 +470,11 @@ const styles = StyleSheet.create({
   slotPriceTextSelected: {
     color: '#fff',
     fontWeight: '700'
+  },
+  slotBookedText: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    fontWeight: '500'
   },
   
   // Bottom Bar

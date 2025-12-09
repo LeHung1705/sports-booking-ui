@@ -1,4 +1,3 @@
-import { Sport } from "./venue";
 
 export interface BookingPayload {
   court_id: string;
