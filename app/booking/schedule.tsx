@@ -62,7 +62,10 @@ export default function ScheduleScreen() {
         if (!venueId) return;
         
         // Fetch availability (Real API)
-        const dateStr = selectedDate.toISOString().split("T")[0];
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         const availabilityData = await venueApi.getVenueAvailability(venueId as string, dateStr);
 
         // DEBUG: Log API response thoroughly
@@ -141,11 +144,16 @@ export default function ScheduleScreen() {
         });
     });
 
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
     router.push({
       pathname: "/booking/checkout",
       params: {
         venueId,
-        date: selectedDate.toISOString(),
+        date: dateStr,
         slots: JSON.stringify(selectedSlotsData),
         totalAmount: totalPrice,
       },

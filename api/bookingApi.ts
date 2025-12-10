@@ -30,8 +30,19 @@ export const bookingApi = {
    * Get detailed booking info
    * GET /api/v1/bookings/{id}
    */
-  getBookingDetail: async (id: string) => {
-      const res = await apiClient.get(`/bookings/${id}`);
+  getBookingDetail: async (id: string): Promise<import("../types/booking").BookingDetailResponse> => {
+      const res = await apiClient.get<import("../types/booking").BookingDetailResponse>(`/bookings/${id}`);
+      return res.data;
+  },
+
+  /**
+   * Cancel a booking
+   * PUT /api/v1/bookings/{id}/cancel
+   */
+  cancelBooking: async (id: string, reason: string): Promise<import("../types/booking").BookingCancelResponse> => {
+      const res = await apiClient.put<import("../types/booking").BookingCancelResponse>(`/bookings/${id}/cancel`, {
+          cancelReason: reason
+      });
       return res.data;
   },
 
@@ -64,6 +75,25 @@ export const bookingApi = {
    */
   removeVoucher: async (bookingId: string): Promise<any> => {
     const res = await apiClient.put(`/bookings/${bookingId}/remove-voucher`);
+    return res.data;
+  },
+
+  /**
+   * Mark a booking as paid (User action)
+   * PUT /api/v1/bookings/{id}/mark-paid
+   */
+  markBookingAsPaid: async (
+    bookingId: string, 
+    refundBankInfo?: { 
+      refundBankName: string; 
+      refundAccountNumber: string; 
+      refundAccountName: string 
+    }
+  ): Promise<import("../types/booking").BookingDetailResponse> => {
+    const res = await apiClient.put<import("../types/booking").BookingDetailResponse>(
+      `/bookings/${bookingId}/mark-paid`, 
+      refundBankInfo
+    );
     return res.data;
   }
 };
