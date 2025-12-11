@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 
 interface ProfileHeaderProps {
@@ -23,7 +23,7 @@ export default function ProfileHeader({ fullName, email, avatar, role }: Profile
   const roleBadge = upperRole.includes('ADMIN')
     ? { label: 'ADMINISTRATOR', color: '#FF3B30' }
     : upperRole.includes('OWNER')
-      ? { label: 'VENUE OWNER', color: '#5856D6' }
+      ? { label: 'CHỦ SÂN', color: '#5856D6' }
       : undefined;
 
   return (
@@ -54,8 +54,8 @@ export default function ProfileHeader({ fullName, email, avatar, role }: Profile
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.white,
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginHorizontal: 0,
+    marginTop: -5,
     marginBottom: 8,
     borderRadius: 18,
     paddingVertical: 28,
@@ -66,6 +66,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
+    paddingTop: 50,
   },
   avatarContainer: {
     marginBottom: 16,
@@ -125,6 +126,6 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 15,
     color: Colors.textSecondary,
-    marginTop: 2,
+    marginTop: 5,
   },
 });
