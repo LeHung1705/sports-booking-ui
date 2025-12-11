@@ -27,6 +27,24 @@ export const bookingApi = {
   },
 
   /**
+   * List owner's bookings
+   * GET /api/v1/bookings/owner
+   */
+  getOwnerBookings: async (): Promise<BookingListResponse[]> => {
+      const res = await apiClient.get<BookingListResponse[]>("/bookings/owner");
+      return res.data;
+  },
+
+  /**
+   * List owner's pending bookings (awaiting confirmation)
+   * GET /api/v1/bookings/owner/pending
+   */
+  getOwnerPendingBookings: async (): Promise<BookingListResponse[]> => {
+      const res = await apiClient.get<BookingListResponse[]>("/bookings/owner/pending");
+      return res.data;
+  },
+
+  /**
    * Get detailed booking info
    * GET /api/v1/bookings/{id}
    */
@@ -95,5 +113,14 @@ export const bookingApi = {
       refundBankInfo
     );
     return res.data;
+  },
+
+  /**
+   * Confirm payment (Owner action)
+   * PUT /api/v1/bookings/{id}/confirm-payment
+   */
+  confirmBooking: async (bookingId: string): Promise<import("../types/booking").BookingDetailResponse> => {
+      const res = await apiClient.put<import("../types/booking").BookingDetailResponse>(`/bookings/${bookingId}/confirm-payment`);
+      return res.data;
   }
 };
