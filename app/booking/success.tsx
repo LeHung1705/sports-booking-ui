@@ -12,7 +12,7 @@ export default function BookingSuccessScreen() {
   };
 
   const handleViewHistory = () => {
-    router.replace("/history");
+    router.replace("/booking/my_bookings");
   };
 
   return (
