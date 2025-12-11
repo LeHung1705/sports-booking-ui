@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { bookingApi } from '../../api/bookingApi';
 import { BookingDetailResponse } from '../../types/booking';
 import { Colors } from '../../constants/Colors';
+import CustomHeader from '@/components/ui/CustomHeader';
 
 export default function BookingDetailScreen() {
     const { id } = useLocalSearchParams();
@@ -117,92 +118,81 @@ export default function BookingDetailScreen() {
         );
     }
 
-    // Logic to show/hide cancel button
-    const isCanceled = booking.payment?.status === 'CANCELED' || (booking as any).status === 'CANCELED'; // API might return status on root or payment
-    // The previous API response showed 'status' on root of BookingDetailResponse? No, actually looking at the DTO:
-    // BookingDetailResponse has `payment` object, but DOES IT HAVE `status` on root?
-    // Let's check the JAVA DTO again.
-    // DTO: private UUID id; private String court; private LocalDateTime startTime; private LocalDateTime endTime; private PaymentItem payment;
-    // WAIT! The Java DTO `BookingDetailResponse` I saw earlier DOES NOT HAVE A `status` FIELD on the root!
-    // It only has `payment` which has `status`.
-    // But `BookingListResponse` had `status`.
-    // I need to add `status` to `BookingDetailResponse` in Java and TS if it's missing.
-    // Let's assume for now I should fix the backend DTO too if it's missing.
-    // Checking `BookingDetailResponse.java` content from previous turn:
-    // It DOES NOT have `status`.
-    // I MUST ADD IT.
-
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.courtName}>{booking.venue} - {booking.court}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
-                    <Text style={styles.statusText}>{booking.status || 'UNKNOWN'}</Text>
+        <View style={styles.wrapper}>
+            <CustomHeader title="Chi tiết đặt sân" showBackButton={true} />
+            <ScrollView contentContainerStyle={styles.container}>
+                <View style={styles.header}>
+                    <Text style={styles.courtName}>{booking.venue} - {booking.court}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
+                        <Text style={styles.statusText}>{booking.status || 'UNKNOWN'}</Text>
+                    </View>
                 </View>
-            </View>
 
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Time</Text>
-                <View style={styles.row}>
-                    <Ionicons name="time-outline" size={20} color="#666" />
-                    <Text style={styles.infoText}>Start: {formatDateTime(booking.startTime)}</Text>
-                </View>
-                <View style={styles.row}>
-                    <Ionicons name="time-outline" size={20} color="#666" />
-                    <Text style={styles.infoText}>End:   {formatDateTime(booking.endTime)}</Text>
-                </View>
-            </View>
-
-            <View style={styles.section}>
-                 <Text style={styles.sectionTitle}>Price Details</Text>
-                 <View style={styles.row}>
-                    <Ionicons name="pricetag-outline" size={20} color="#666" />
-                    <Text style={styles.infoText}>Total: {booking.totalPrice?.toLocaleString('vi-VN')} VND</Text>
-                 </View>
-            </View>
-
-            {booking.payment && (
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Payment</Text>
+                    <Text style={styles.sectionTitle}>Time</Text>
                     <View style={styles.row}>
-                        <Ionicons name="card-outline" size={20} color="#666" />
-                        <Text style={styles.infoText}>Amount: {booking.payment.amount?.toLocaleString('vi-VN')} VND</Text>
+                        <Ionicons name="time-outline" size={20} color="#666" />
+                        <Text style={styles.infoText}>Start: {formatDateTime(booking.startTime)}</Text>
                     </View>
                     <View style={styles.row}>
-                        <Ionicons name="information-circle-outline" size={20} color="#666" />
-                        <Text style={styles.infoText}>Status: {booking.payment.status}</Text>
+                        <Ionicons name="time-outline" size={20} color="#666" />
+                        <Text style={styles.infoText}>End:   {formatDateTime(booking.endTime)}</Text>
                     </View>
                 </View>
-            )}
 
-            {/* Cancel Button */}
-            { booking.status !== 'CANCELED' && booking.status !== 'COMPLETED' && booking.status !== 'FAILED' &&
-              new Date(booking.startTime).getTime() > new Date().getTime() && (
-                <TouchableOpacity 
-                    style={[styles.cancelButton, canceling && styles.disabledButton]} 
-                    onPress={handleCancel}
-                    disabled={canceling}
-                >
-                    {canceling ? (
-                        <ActivityIndicator color="white" />
-                    ) : (
-                        <Text style={styles.cancelButtonText}>Cancel Booking</Text>
-                    )}
-                </TouchableOpacity>
-            )}
-            
-            { booking.status === 'CANCELED' && (
-                <View style={styles.canceledBanner}>
-                    <Text style={styles.canceledText}>This booking has been canceled.</Text>
+                <View style={styles.section}>
+                     <Text style={styles.sectionTitle}>Price Details</Text>
+                     <View style={styles.row}>
+                        <Ionicons name="pricetag-outline" size={20} color="#666" />
+                        <Text style={styles.infoText}>Total: {booking.totalPrice?.toLocaleString('vi-VN')} VND</Text>
+                     </View>
                 </View>
-            )}
 
-        </ScrollView>
+                {booking.payment && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Payment</Text>
+                        <View style={styles.row}>
+                            <Ionicons name="card-outline" size={20} color="#666" />
+                            <Text style={styles.infoText}>Amount: {booking.payment.amount?.toLocaleString('vi-VN')} VND</Text>
+                        </View>
+                        <View style={styles.row}>
+                            <Ionicons name="information-circle-outline" size={20} color="#666" />
+                            <Text style={styles.infoText}>Status: {booking.payment.status}</Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* Cancel Button */}
+                { booking.status !== 'CANCELED' && booking.status !== 'COMPLETED' && booking.status !== 'FAILED' &&
+                  new Date(booking.startTime).getTime() > new Date().getTime() && (
+                    <TouchableOpacity 
+                        style={[styles.cancelButton, canceling && styles.disabledButton]} 
+                        onPress={handleCancel}
+                        disabled={canceling}
+                    >
+                        {canceling ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text style={styles.cancelButtonText}>Cancel Booking</Text>
+                        )}
+                    </TouchableOpacity>
+                )}
+                
+                { booking.status === 'CANCELED' && (
+                    <View style={styles.canceledBanner}>
+                        <Text style={styles.canceledText}>This booking has been canceled.</Text>
+                    </View>
+                )}
+
+            </ScrollView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
+    wrapper: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { padding: 16 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header: { marginBottom: 24 },
     courtName: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 8 },

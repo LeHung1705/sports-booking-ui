@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
-import { Stack, useRouter, useFocusEffect } from 'expo-router';
-import { bookingApi } from '../../api/bookingApi';
-import { BookingListResponse } from '../../types/booking';
-import { Colors } from '../../constants/Colors';
+import CustomHeader from '@/components/ui/CustomHeader';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { bookingApi } from '../../api/bookingApi';
+import { Colors } from '../../constants/Colors';
+import { BookingListResponse } from '../../types/booking';
 
 export default function MyBookingsScreen() {
     const router = useRouter();
@@ -89,7 +90,7 @@ export default function MyBookingsScreen() {
 
     return (
         <View style={styles.container}>
-            <Stack.Screen options={{ title: 'My Bookings', headerBackTitle: 'Back' }} />
+            <CustomHeader title="Lịch sử đặt sân" showBackButton={true} />
             
             {loading && !refreshing ? (
                 <View style={styles.center}>

@@ -1,7 +1,7 @@
   // app/(tabs)/profile.tsx
   import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,18 +13,76 @@ import {
   View,
 } from "react-native";
 import { authApi } from "../../api/authApi";
+import { bookingApi } from "../../api/bookingApi";
+import { BookingListResponse } from "../../types/booking";
 
   const PRIMARY = "#00A36C";
 
+  interface UserProfile {
+      email: string;
+      full_name: string;
+      phone?: string;
+      role?: string;
+  }
+
   export default function ProfileScreen() {
     const router = useRouter();
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false); // Loading state for logout action
+    const [isLoadingProfile, setIsLoadingProfile] = useState(true); // Loading state for initial profile fetch
+    const [user, setUser] = useState<UserProfile | null>(null);
+    const [pendingBookings, setPendingBookings] = useState<BookingListResponse[]>([]);
+    const [processingId, setProcessingId] = useState<string | null>(null);
 
-    // TODO: Lấy thông tin user từ AsyncStorage
-    const user = {
-      name: "Nguyễn Văn A",
-      email: "user@example.com",
-      phone: "0123456789",
+    useFocusEffect(
+      useCallback(() => {
+        loadUser();
+      }, [])
+    );
+
+    useEffect(() => {
+        if (user?.role === 'OWNER') {
+            fetchPendingBookings();
+        }
+    }, [user]);
+
+    const loadUser = async () => {
+        try {
+            setIsLoadingProfile(true);
+            const userStr = await AsyncStorage.getItem('user');
+            if (userStr) {
+                const userData = JSON.parse(userStr);
+                setUser(userData);
+            } else {
+                setUser(null);
+            }
+        } catch (e) {
+            console.error("Failed to load user", e);
+        } finally {
+            setIsLoadingProfile(false);
+        }
+    };
+
+    const fetchPendingBookings = async () => {
+        try {
+            const bookings = await bookingApi.getOwnerPendingBookings();
+            setPendingBookings(bookings);
+        } catch (error) {
+            console.error("Failed to fetch pending bookings", error);
+        }
+    };
+
+    const handleConfirmBooking = async (bookingId: string) => {
+        setProcessingId(bookingId);
+        try {
+            await bookingApi.confirmBooking(bookingId);
+            Alert.alert("Thành công", "Đã xác nhận thanh toán");
+            // Refresh list
+            fetchPendingBookings();
+        } catch (error: any) {
+            Alert.alert("Lỗi", error.message || "Không thể xác nhận");
+        } finally {
+            setProcessingId(null);
+        }
     };
 
     const handleLogout = () => {
@@ -37,12 +95,14 @@ import { authApi } from "../../api/authApi";
             setLoading(true);
             try {
               await authApi.logout();
-              // TODO: Xóa token khỏi AsyncStorage
-              await AsyncStorage.removeItem('token');
+              await AsyncStorage.removeItem('accessToken');
               await AsyncStorage.removeItem('user');
               router.replace("/login");
             } catch (error) {
               console.error("❌ Logout failed:", error);
+              // Force logout even if API fails
+               await AsyncStorage.removeItem('accessToken');
+               await AsyncStorage.removeItem('user');
               router.replace("/");
             } finally {
               setLoading(false);
@@ -52,6 +112,28 @@ import { authApi } from "../../api/authApi";
       ]);
     };
 
+    if (isLoadingProfile) {
+        return (
+            <View style={[styles.container, styles.center]}>
+                <ActivityIndicator size="large" color={PRIMARY} />
+            </View>
+        );
+    }
+
+    if (!user) {
+        return (
+             <View style={[styles.container, styles.center]}>
+                <Text style={{ marginBottom: 20, fontSize: 16, color: '#666' }}>Bạn chưa đăng nhập</Text>
+                <TouchableOpacity 
+                    onPress={() => router.replace('/login')} 
+                    style={{ paddingHorizontal: 20, paddingVertical: 10, backgroundColor: PRIMARY, borderRadius: 8 }}
+                >
+                    <Text style={{color: 'white', fontWeight: 'bold'}}>Đăng nhập ngay</Text>
+                </TouchableOpacity>
+             </View>
+        );
+    }
+
     return (
       <ScrollView style={styles.container}>
         {/* Header */}
@@ -60,7 +142,7 @@ import { authApi } from "../../api/authApi";
             source={require("../../assets/images/logo.png")}
             style={styles.logo}
           />
-          <Text style={styles.name}>{user.name}</Text>
+          <Text style={styles.name}>{user.full_name || "User"}</Text>
           <Text style={styles.email}>{user.email}</Text>
         </View>
 
@@ -69,9 +151,54 @@ import { authApi } from "../../api/authApi";
           <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
           <View style={styles.infoCard}>
             <InfoRow icon="📧" label="Email" value={user.email} />
-            <InfoRow icon="📱" label="Số điện thoại" value={user.phone} />
+            <InfoRow icon="📱" label="Số điện thoại" value={user.phone || "Chưa cập nhật"} />
           </View>
         </View>
+
+        {/* Owner Management Section */}
+        {user.role === 'OWNER' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Quản lý sân</Text>
+            
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => router.push("/owner/bookings")}
+            >
+              <Text style={styles.menuIcon}>📅</Text>
+              <Text style={styles.menuText}>Xem tất cả đặt sân</Text>
+              <Text style={styles.menuArrow}>›</Text>
+            </TouchableOpacity>
+
+            {/* Pending Bookings List */}
+            {pendingBookings.length > 0 && (
+                <View style={styles.pendingContainer}>
+                    <Text style={styles.pendingTitle}>Đơn chờ xác nhận ({pendingBookings.length})</Text>
+                    {pendingBookings.map(item => (
+                        <View key={item.id} style={styles.pendingItem}>
+                            <View style={{flex: 1}}>
+                                <Text style={styles.pendingCourt}>{item.court} - {item.venue}</Text>
+                                <Text style={styles.pendingUser}>{item.userName || "Khách"}</Text>
+                                <Text style={styles.pendingPrice}>
+                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalPrice)}
+                                </Text>
+                            </View>
+                            <TouchableOpacity 
+                                style={[styles.confirmBtn, processingId === item.id && {backgroundColor: '#ccc'}]}
+                                onPress={() => handleConfirmBooking(item.id)}
+                                disabled={processingId === item.id}
+                            >
+                                {processingId === item.id ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <Text style={styles.confirmBtnText}>Xác nhận</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    ))}
+                </View>
+            )}
+          </View>
+        )}
 
         {/* Cài đặt */}
         <View style={styles.section}>
@@ -149,6 +276,10 @@ import { authApi } from "../../api/authApi";
     container: {
       flex: 1,
       backgroundColor: "#F9FAFB",
+    },
+    center: {
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     header: {
       backgroundColor: PRIMARY,
@@ -273,5 +404,53 @@ import { authApi } from "../../api/authApi";
       color: "#999",
       fontSize: 12,
       paddingBottom: 20,
+    },
+    pendingContainer: {
+        marginTop: 12,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#eee',
+    },
+    pendingTitle: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: PRIMARY,
+        marginBottom: 8,
+    },
+    pendingItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#f0f0f0',
+    },
+    pendingCourt: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    pendingUser: {
+        fontSize: 12,
+        color: '#666',
+    },
+    pendingPrice: {
+        fontSize: 13,
+        fontWeight: 'bold',
+        color: PRIMARY,
+    },
+    confirmBtn: {
+        backgroundColor: PRIMARY,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 6,
+        marginLeft: 10,
+    },
+    confirmBtnText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 'bold',
     },
   });

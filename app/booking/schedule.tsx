@@ -1,10 +1,10 @@
+import CustomHeader from "@/components/ui/CustomHeader";
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -48,6 +48,7 @@ export default function ScheduleScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { venueId, venueName } = params;
+  const headerTitle = typeof venueName === 'string' ? `Lịch sân ${venueName}` : "Chọn lịch đặt";
 
   const [selectedDate, setSelectedDate] = useState<Date>(DATES[0]);
   const [tableData, setTableData] = useState<TimeTableData[]>([]);
@@ -265,15 +266,8 @@ export default function ScheduleScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: venueName ? `Lịch sân ${venueName}` : "Chọn lịch đặt",
-          headerBackTitle: "Quay lại",
-          headerTintColor: Colors.primary,
-        }}
-      />
+    <View style={styles.container}>
+      <CustomHeader title={headerTitle} showBackButton={true} />
       <StatusBar barStyle="dark-content" />
 
       {/* 1. Date Selector */}
@@ -346,7 +340,7 @@ export default function ScheduleScreen() {
           <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

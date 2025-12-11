@@ -1,7 +1,7 @@
+import CustomHeader from '@/components/ui/CustomHeader';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { bookingApi } from '../../api/bookingApi';
 import CustomButton from '../../components/common/CustomButton';
 import { Colors } from '../../constants/Colors';
@@ -55,13 +55,13 @@ export default function PaymentScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <CustomHeader title="Thanh toán" showBackButton={true} />
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.title}>Payment</Text>
           
           <View style={styles.amountContainer}>
             <Text style={styles.amountLabel}>Amount to Pay</Text>
@@ -127,7 +127,7 @@ export default function PaymentScreen() {
           />
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

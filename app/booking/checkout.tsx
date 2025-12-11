@@ -1,16 +1,17 @@
 import { bookingApi } from "@/api/bookingApi";
-import { voucherApi } from "@/api/voucherApi"; // Added
+import { venueApi } from "@/api/venueApi"; // Import venueApi
+import { voucherApi } from "@/api/voucherApi";
+import CustomHeader from "@/components/ui/CustomHeader";
 import { Colors } from "@/constants/Colors";
 import { BookingPayload } from "@/types/booking";
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react"; // Import useEffect
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -32,6 +33,7 @@ export default function CheckoutScreen() {
   const [note, setNote] = useState("");
   const [paymentOption, setPaymentOption] = useState<"FULL_PAYMENT" | "DEPOSIT">("FULL_PAYMENT");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [venueName, setVenueName] = useState("Đang tải..."); // State for venue name
 
   // Voucher State
   const [voucherCode, setVoucherCode] = useState("");
@@ -46,6 +48,22 @@ export default function CheckoutScreen() {
   const totalAmount = parseInt(params.totalAmount || "0");
   const finalAmount = totalAmount - discount;
   const depositAmount = Math.round(finalAmount * 0.3);
+
+  // Fetch venue name on component mount
+  useEffect(() => {
+    const fetchVenueName = async () => {
+      if (params.venueId) {
+        try {
+          const response = await venueApi.getVenueDetail(params.venueId);
+          setVenueName(response.name);
+        } catch (error) {
+          console.error("Error fetching venue details:", error);
+          setVenueName("Không xác định");
+        }
+      }
+    };
+    fetchVenueName();
+  }, [params.venueId]);
 
   const handleCheckVoucher = async () => {
     if (!voucherCode.trim()) return;
@@ -149,15 +167,8 @@ export default function CheckoutScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: "Thanh toán",
-          headerBackTitle: "Quay lại",
-          headerTintColor: Colors.primary,
-        }}
-      />
+    <View style={styles.container}>
+      <CustomHeader title="Thanh toán" showBackButton />
       <StatusBar barStyle="dark-content" />
 
       <KeyboardAvoidingView 
@@ -169,7 +180,7 @@ export default function CheckoutScreen() {
             {/* INVOICE CARD */}
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                    <Text style={styles.venueName}>Sân bóng TechBo</Text>
+                    <Text style={styles.venueName}>{venueName}</Text>
                     <Text style={styles.dateText}>{formattedDate}</Text>
                 </View>
                 <View style={styles.divider} />
@@ -337,7 +348,7 @@ export default function CheckoutScreen() {
             </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
