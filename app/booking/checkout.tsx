@@ -1,16 +1,17 @@
 import { bookingApi } from "@/api/bookingApi";
-import { voucherApi } from "@/api/voucherApi"; // Added
+import { venueApi } from "@/api/venueApi"; // Import venueApi
+import { voucherApi } from "@/api/voucherApi";
+import CustomHeader from "@/components/ui/CustomHeader";
 import { Colors } from "@/constants/Colors";
 import { BookingPayload } from "@/types/booking";
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react"; // Import useEffect
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -30,8 +31,9 @@ export default function CheckoutScreen() {
   }>();
 
   const [note, setNote] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "TRANSFER">("CASH");
+  const [paymentOption, setPaymentOption] = useState<"FULL_PAYMENT" | "DEPOSIT">("FULL_PAYMENT");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [venueName, setVenueName] = useState("Đang tải..."); // State for venue name
 
   // Voucher State
   const [voucherCode, setVoucherCode] = useState("");
@@ -44,6 +46,24 @@ export default function CheckoutScreen() {
   const dateObj = new Date(params.date);
   const formattedDate = `Thứ ${dateObj.getDay() + 1}, ${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
   const totalAmount = parseInt(params.totalAmount || "0");
+  const finalAmount = totalAmount - discount;
+  const depositAmount = Math.round(finalAmount * 0.3);
+
+  // Fetch venue name on component mount
+  useEffect(() => {
+    const fetchVenueName = async () => {
+      if (params.venueId) {
+        try {
+          const response = await venueApi.getVenueDetail(params.venueId);
+          setVenueName(response.name);
+        } catch (error) {
+          console.error("Error fetching venue details:", error);
+          setVenueName("Không xác định");
+        }
+      }
+    };
+    fetchVenueName();
+  }, [params.venueId]);
 
   const handleCheckVoucher = async () => {
     if (!voucherCode.trim()) return;
@@ -108,6 +128,7 @@ export default function CheckoutScreen() {
             court_id: courtId,
             start_time: startTimeISO,
             end_time: endTimeISO,
+            payment_option: paymentOption
         };
 
         // 4. Create Booking
@@ -125,7 +146,17 @@ export default function CheckoutScreen() {
             }
         }
         
-        router.replace("/booking/success");
+        // Always navigate to Payment Screen now
+        router.replace({
+            pathname: "/booking/payment",
+            params: {
+                bookingId: bookingId,
+                totalAmount: bookingRes.amountToPay.toString(), // Use amountToPay from backend
+                bankBin: bookingRes.bankBin,
+                bankAccount: bookingRes.bankAccountNumber,
+                bankName: bookingRes.bankAccountName
+            }
+        });
 
     } catch (error: any) {
         console.error(error);
@@ -136,15 +167,8 @@ export default function CheckoutScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: "Thanh toán",
-          headerBackTitle: "Quay lại",
-          headerTintColor: Colors.primary,
-        }}
-      />
+    <View style={styles.container}>
+      <CustomHeader title="Thanh toán" showBackButton />
       <StatusBar barStyle="dark-content" />
 
       <KeyboardAvoidingView 
@@ -156,7 +180,7 @@ export default function CheckoutScreen() {
             {/* INVOICE CARD */}
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                    <Text style={styles.venueName}>Sân bóng TechBo</Text>
+                    <Text style={styles.venueName}>{venueName}</Text>
                     <Text style={styles.dateText}>{formattedDate}</Text>
                 </View>
                 <View style={styles.divider} />
@@ -234,54 +258,64 @@ export default function CheckoutScreen() {
                 <View style={[styles.totalRow, { marginTop: 12 }]}>
                     <Text style={[styles.totalLabel, { fontWeight: "bold", fontSize: 18 }]}>Tổng thanh toán</Text>
                     <Text style={[styles.totalValue, { fontSize: 22, color: Colors.primary }]}>
-                        {(totalAmount - discount).toLocaleString("vi-VN")} đ
+                        {finalAmount.toLocaleString("vi-VN")} đ
                     </Text>
                 </View>
             </View>
 
-            {/* PAYMENT METHOD */}
-            <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
+            {/* PAYMENT OPTIONS */}
+            <Text style={styles.sectionTitle}>Hình thức thanh toán</Text>
             <View style={styles.paymentContainer}>
+                
+                {/* Option 1: Full Payment */}
                 <TouchableOpacity 
                     style={[
                         styles.paymentOption, 
-                        paymentMethod === "CASH" && styles.paymentOptionSelected
+                        paymentOption === "FULL_PAYMENT" && styles.paymentOptionSelected
                     ]}
-                    onPress={() => setPaymentMethod("CASH")}
+                    onPress={() => setPaymentOption("FULL_PAYMENT")}
                 >
                     <Ionicons 
-                        name="cash-outline" 
+                        name={paymentOption === "FULL_PAYMENT" ? "radio-button-on" : "radio-button-off"}
                         size={24} 
-                        color={paymentMethod === "CASH" ? Colors.primary : "#666"} 
+                        color={paymentOption === "FULL_PAYMENT" ? Colors.primary : "#666"} 
                     />
-                    <Text style={[
-                        styles.paymentText,
-                        paymentMethod === "CASH" && styles.paymentTextSelected
-                    ]}>Tiền mặt</Text>
-                    {paymentMethod === "CASH" && (
-                        <Ionicons name="checkmark-circle" size={20} color={Colors.primary} style={styles.checkIcon} />
-                    )}
+                    <View style={styles.optionContent}>
+                        <Text style={[
+                            styles.paymentText,
+                            paymentOption === "FULL_PAYMENT" && styles.paymentTextSelected
+                        ]}>Thanh toán toàn bộ (100%)</Text>
+                        <Text style={styles.subText}>
+                           Thanh toán ngay: <Text style={{fontWeight:'bold', color: Colors.primary}}>{finalAmount.toLocaleString("vi-VN")} đ</Text>
+                        </Text>
+                    </View>
                 </TouchableOpacity>
 
+                {/* Option 2: Deposit 30% */}
                 <TouchableOpacity 
                     style={[
                         styles.paymentOption, 
-                        paymentMethod === "TRANSFER" && styles.paymentOptionSelected
+                        paymentOption === "DEPOSIT" && styles.paymentOptionSelected
                     ]}
-                    onPress={() => setPaymentMethod("TRANSFER")}
+                    onPress={() => setPaymentOption("DEPOSIT")}
                 >
                     <Ionicons 
-                        name="card-outline" 
+                        name={paymentOption === "DEPOSIT" ? "radio-button-on" : "radio-button-off"} 
                         size={24} 
-                        color={paymentMethod === "TRANSFER" ? Colors.primary : "#666"} 
+                        color={paymentOption === "DEPOSIT" ? Colors.primary : "#666"} 
                     />
-                    <Text style={[
-                        styles.paymentText,
-                        paymentMethod === "TRANSFER" && styles.paymentTextSelected
-                    ]}>Chuyển khoản</Text>
-                    {paymentMethod === "TRANSFER" && (
-                        <Ionicons name="checkmark-circle" size={20} color={Colors.primary} style={styles.checkIcon} />
-                    )}
+                    <View style={styles.optionContent}>
+                        <Text style={[
+                            styles.paymentText,
+                            paymentOption === "DEPOSIT" && styles.paymentTextSelected
+                        ]}>Đặt cọc giữ chỗ (30%)</Text>
+                         <Text style={styles.subText}>
+                           Thanh toán trước: <Text style={{fontWeight:'bold', color: Colors.primary}}>{depositAmount.toLocaleString("vi-VN")} đ</Text>
+                        </Text>
+                         <Text style={styles.noteText}>
+                           Phần còn lại thanh toán tại sân.
+                        </Text>
+                    </View>
                 </TouchableOpacity>
             </View>
 
@@ -307,12 +341,14 @@ export default function CheckoutScreen() {
                 {isSubmitting ? (
                     <ActivityIndicator color="#fff" />
                 ) : (
-                    <Text style={styles.confirmButtonText}>Xác nhận đặt sân</Text>
+                    <Text style={styles.confirmButtonText}>
+                        Thanh toán {paymentOption === "FULL_PAYMENT" ? finalAmount.toLocaleString("vi-VN") : depositAmount.toLocaleString("vi-VN")} đ
+                    </Text>
                 )}
             </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -417,7 +453,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "500",
     color: "#333",
-    marginLeft: 12,
+    marginLeft: 0,
     flex: 1,
   },
   paymentTextSelected: {
@@ -426,6 +462,21 @@ const styles = StyleSheet.create({
   },
   checkIcon: {
     marginLeft: "auto",
+  },
+  optionContent: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  subText: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 2,
+  },
+  noteText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontStyle: "italic",
+    marginTop: 2,
   },
   input: {
     backgroundColor: "#fff",

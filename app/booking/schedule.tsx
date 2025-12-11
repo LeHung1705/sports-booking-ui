@@ -1,10 +1,10 @@
+import CustomHeader from "@/components/ui/CustomHeader";
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -48,6 +48,7 @@ export default function ScheduleScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { venueId, venueName } = params;
+  const headerTitle = typeof venueName === 'string' ? `Lịch sân ${venueName}` : "Chọn lịch đặt";
 
   const [selectedDate, setSelectedDate] = useState<Date>(DATES[0]);
   const [tableData, setTableData] = useState<TimeTableData[]>([]);
@@ -62,7 +63,10 @@ export default function ScheduleScreen() {
         if (!venueId) return;
         
         // Fetch availability (Real API)
-        const dateStr = selectedDate.toISOString().split("T")[0];
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         const availabilityData = await venueApi.getVenueAvailability(venueId as string, dateStr);
 
         // DEBUG: Log API response thoroughly
@@ -141,11 +145,16 @@ export default function ScheduleScreen() {
         });
     });
 
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
     router.push({
       pathname: "/booking/checkout",
       params: {
         venueId,
-        date: selectedDate.toISOString(),
+        date: dateStr,
         slots: JSON.stringify(selectedSlotsData),
         totalAmount: totalPrice,
       },
@@ -257,15 +266,8 @@ export default function ScheduleScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: venueName ? `Lịch sân ${venueName}` : "Chọn lịch đặt",
-          headerBackTitle: "Quay lại",
-          headerTintColor: Colors.primary,
-        }}
-      />
+    <View style={styles.container}>
+      <CustomHeader title={headerTitle} showBackButton={true} />
       <StatusBar barStyle="dark-content" />
 
       {/* 1. Date Selector */}
@@ -338,7 +340,7 @@ export default function ScheduleScreen() {
           <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

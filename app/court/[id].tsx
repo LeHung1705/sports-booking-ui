@@ -108,17 +108,7 @@ export default function CourtDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
-
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBack} onPress={handleBack}>
-          <Ionicons name="chevron-back" size={24} color={Colors.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          Chi tiết sân
-        </Text>
-        <View style={styles.headerRight} />
-      </View>
+      <CustomHeader title={court.name} showBackButton={true} />
 
       <View style={styles.body}>
         {court.imageUrl ? (

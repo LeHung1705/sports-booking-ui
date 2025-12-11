@@ -1,5 +1,5 @@
 export const Colors = {
-    primary: "#00A36C",        // Xanh chủ đạo
+  primary: "#00B074",        // Xanh chủ đạo (premium)
     secondary: "#5856D6",      // Tím (nếu cần)
     background: "#ffffff",     // Nền app
     card: "#f8f9fa",           // Nền input/card

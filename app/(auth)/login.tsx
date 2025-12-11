@@ -35,8 +35,13 @@ export default function LoginScreen() {
     try {
       const response = await authApi.login({ email, password });
 
-      if (response.data && response.data.accessToken) {
-        await AsyncStorage.setItem("accessToken", response.data.accessToken);
+      if (response.data) {
+        if (response.data.accessToken) {
+            await AsyncStorage.setItem("accessToken", response.data.accessToken);
+        }
+        if (response.data.user) {
+            await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
+        }
       }
 
       Alert.alert("Thành công", "Đăng nhập thành công!", [
