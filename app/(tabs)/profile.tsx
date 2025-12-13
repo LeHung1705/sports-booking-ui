@@ -273,7 +273,7 @@ export default function ProfileScreen() {
               <MenuOption
                 icon="add-outline"
                 title="Add New Court"
-                onPress={() => console.log('Navigate to Add Court')}
+                onPress={() => router.push('/owner/add-court')}
                 showBorder={false}
               />
             </View>

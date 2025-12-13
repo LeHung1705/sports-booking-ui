@@ -11,13 +11,14 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location'; 
 import DateTimePicker from '@react-native-community/datetimepicker'; 
 import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 
 // ⬇️ CHANGED: dùng apiClient chung thay vì axios + tự gắn token
 import apiClient from '../../api/apiClient';
 
 const CreateVenueScreen = () => {
   const navigation = useNavigation<any>();
-
+  const router = useRouter(); // Dùng router của expo-router để push params dễ hơn
   // State Form
   const [name, setName] = useState<string>('');
   const [address, setAddress] = useState<string>('');
@@ -139,11 +140,38 @@ const CreateVenueScreen = () => {
 
       console.log("✅ CreateVenue response:", response.status, response.data);
 
+      // 👇👇👇 THAY THẾ ĐOẠN IF CŨ BẰNG ĐOẠN NÀY 👇👇👇
       if (response.status === 201 || response.status === 200) {
-        Alert.alert("Thành công", "Tạo sân thành công!", [
-          { text: "OK", onPress: () => navigation.goBack() }
-        ]);
-      } else {
+        // 1. Lấy ID của Venue vừa tạo từ Backend trả về
+        const newVenueId = response.data.id; 
+        console.log("🚀 Created Venue ID:", newVenueId);
+
+        // 2. Hiện thông báo hỏi người dùng
+        Alert.alert(
+          "Thành công", 
+          "Đã tạo Venue mới! Bạn có muốn thêm sân (Court) cho Venue này ngay không?", 
+          [
+            { 
+              text: "Để sau", 
+              onPress: () => navigation.goBack(), // Quay về danh sách
+              style: "cancel"
+            },
+            { 
+              text: "Thêm Court ngay", 
+              onPress: () => {
+                // 3. Chuyển sang trang Add Court và GỬI KÈM venueId
+                // Lưu ý: Đảm bảo file add-court.tsx nằm đúng đường dẫn này
+                router.push({
+                  pathname: '/owner/add-court',
+                  params: { venueId: newVenueId }
+                });
+              } 
+            }
+          ]
+        );
+      } 
+      // 👆👆👆 HẾT PHẦN BỔ SUNG 👆👆👆
+      else {
         Alert.alert("Lỗi", `Server trả về status ${response.status}`);
       }
 
