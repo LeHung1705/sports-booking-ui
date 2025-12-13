@@ -3,18 +3,27 @@ export interface BookingPayload {
   court_id: string;
   start_time: string; // ISO 8601 string (OffsetDateTime)
   end_time: string;   // ISO 8601 string (OffsetDateTime)
+  payment_option?: 'DEPOSIT' | 'FULL_PAYMENT';
 }
 
 export interface BookingResponse {
   id: string;
   totalAmount: number;
+  amountToPay: number;
   status: string;
+  bankBin?: string;
+  bankAccountNumber?: string;
+  bankAccountName?: string;
 }
 
 export interface BookingListResponse {
   id: string;
+  venue: string;
   court: string;
+  userName?: string;
   startTime: string;
+  endTime: string;
+  totalPrice: number;
   status: string;
 }
 
@@ -51,6 +60,31 @@ export interface ApiVenueAvailabilityResponse {
     venueId: string;
     venueName: string;
     courts: ApiCourtAvailability[];
+}
+
+export interface BookingDetailResponse {
+  id: string;
+  venue: string;
+  court: string;
+  startTime: string;
+  endTime: string;
+  totalPrice: number;
+  status: string;
+  payment?: {
+    id: string;
+    amount: number;
+    status: string;
+    returnPayload?: string;
+  };
+}
+
+export interface BookingCancelRequest {
+    cancelReason: string;
+}
+
+export interface BookingCancelResponse {
+    status: string;
+    refundAmount: number;
 }
 
 

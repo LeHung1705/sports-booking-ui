@@ -1,8 +1,7 @@
 // app/(tabs)/profile.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter, useFocusEffect } from 'expo-router';
-import React, { useState, useMemo, useCallback } from 'react';
-
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,7 +14,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '../../api/authApi';
 import { userApi } from '../../api/userApi';
+import { bookingApi } from '../../api/bookingApi';
 import { User } from '../../types/User';
+import { BookingListResponse } from "../../types/booking";
 import { Colors } from '../../constants/Colors';
 
 import ProfileHeader from '../../components/profile/ProfileHeader';
@@ -28,21 +29,23 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
-  // ✅ SỬA LOGIC CẬP NHẬT TẠI ĐÂY
-  // Dùng useFocusEffect để tự động chạy lại mỗi khi màn hình được active
+  // Owner specific state
+  const [pendingBookings, setPendingBookings] = useState<BookingListResponse[]>([]);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  // 1. Fetch User Data (Logic từ feature/user-history: Tối ưu UX)
   useFocusEffect(
     useCallback(() => {
-      let isActive = true; // Cờ kiểm tra component còn active không
+      let isActive = true;
 
       const fetchUserData = async () => {
         try {
-          // Không set loading = true ở đây để tránh bị nháy màn hình khó chịu
-          // Chỉ set loading lần đầu tiên thôi
+          // Chỉ set loading lần đầu
           const userData = await userApi.getMyInfo();
           
           if (isActive) {
             setUser(userData);
-            setLoading(false); // Tắt loading sau khi lấy xong
+            setLoading(false);
           }
         } catch (error) {
           console.error('❌ Failed to load user info:', error);
@@ -55,10 +58,39 @@ export default function ProfileScreen() {
       fetchUserData();
 
       return () => {
-        isActive = false; // Cleanup tránh memory leak
+        isActive = false;
       };
     }, [])
   );
+
+  // 2. Fetch Owner Pending Bookings (Logic từ feature/booking: Tính năng Owner)
+  useEffect(() => {
+    if (user?.role && user.role.toUpperCase().includes('OWNER')) {
+      fetchPendingBookings();
+    }
+  }, [user]);
+
+  const fetchPendingBookings = async () => {
+    try {
+      const bookings = await bookingApi.getOwnerPendingBookings();
+      setPendingBookings(bookings);
+    } catch (error) {
+      console.error("Failed to fetch pending bookings", error);
+    }
+  };
+
+  const handleConfirmBooking = async (bookingId: string) => {
+    setProcessingId(bookingId);
+    try {
+      await bookingApi.confirmBooking(bookingId);
+      Alert.alert("Thành công", "Đã xác nhận thanh toán");
+      fetchPendingBookings(); // Refresh list
+    } catch (error: any) {
+      Alert.alert("Lỗi", error.message || "Không thể xác nhận");
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert('Confirm Logout', 'Are you sure you want to logout?', [
@@ -69,12 +101,17 @@ export default function ProfileScreen() {
         onPress: async () => {
           setLogoutLoading(true);
           try {
-             await authApi.logout(); 
+            await authApi.logout(); 
+            // Xóa sạch các key có thể tồn tại
             await AsyncStorage.removeItem('token');
+            await AsyncStorage.removeItem('accessToken');
             await AsyncStorage.removeItem('user');
             router.replace('/(auth)/login');
           } catch (error) {
             console.error('❌ Logout failed:', error);
+            // Force logout nếu API lỗi
+            await AsyncStorage.removeItem('token');
+            await AsyncStorage.removeItem('user');
             router.replace('/(auth)/login');
           } finally {
             setLogoutLoading(false);
@@ -84,6 +121,7 @@ export default function ProfileScreen() {
     ]);
   };
 
+  // 3. Stats Logic (Logic từ feature/user-history: Tính toán thống kê)
   const stats = useMemo(() => {
     const meta: any = user || {};
     const nestedStats = meta.stats || meta.statistics || {};
@@ -121,7 +159,6 @@ export default function ProfileScreen() {
 
   const renderMenuByRole = () => {
     if (!user) return null;
-
     const role = (user.role || 'USER').toUpperCase();
     
     if (role.includes('USER')) {
@@ -172,6 +209,37 @@ export default function ProfileScreen() {
     if (role.includes('OWNER')) {
       return (
         <>
+          {/* Section Booking Chờ Duyệt của Owner */}
+          {pendingBookings.length > 0 && (
+             <View style={styles.menuSection}>
+                 <Text style={styles.sectionTitle}>CẦN XÁC NHẬN ({pendingBookings.length})</Text>
+                 <View style={styles.pendingContainer}>
+                    {pendingBookings.map(item => (
+                        <View key={item.id} style={styles.pendingItem}>
+                            <View style={{flex: 1}}>
+                                <Text style={styles.pendingCourt}>{item.court} - {item.venue}</Text>
+                                <Text style={styles.pendingUser}>{item.userName || "Khách"}</Text>
+                                <Text style={styles.pendingPrice}>
+                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalPrice)}
+                                </Text>
+                            </View>
+                            <TouchableOpacity 
+                                style={[styles.confirmBtn, processingId === item.id && {backgroundColor: '#ccc'}]}
+                                onPress={() => handleConfirmBooking(item.id)}
+                                disabled={processingId === item.id}
+                            >
+                                {processingId === item.id ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <Text style={styles.confirmBtnText}>Xác nhận</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    ))}
+                 </View>
+             </View>
+          )}
+
           <View style={styles.menuSection}>
             <Text style={styles.sectionTitle}>VENUE MANAGEMENT</Text>
             <View style={styles.menuCard}>
@@ -361,7 +429,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA', // Sửa lại màu nền sáng cho nổi bật Card
+    backgroundColor: '#F8F9FA',
   },
   content: {
     paddingBottom: 42,
@@ -412,7 +480,7 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     flexDirection: 'row',
-    backgroundColor: Colors.primary, // Đảm bảo Colors.primary là màu xanh #00B074
+    backgroundColor: Colors.primary,
     marginHorizontal: 16,
     marginTop: 28,
     paddingVertical: 18,
@@ -482,5 +550,56 @@ const styles = StyleSheet.create({
   statusSubtitle: {
     fontSize: 13,
     color: '#888',
+  },
+  // Pending Booking List Styles (Merged from feature/booking)
+  pendingContainer: {
+    backgroundColor: 'white',
+    borderRadius: 14,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: '#eee',
+    padding: 8, // Added padding inside card
+  },
+  pendingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  pendingCourt: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  pendingUser: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  pendingPrice: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    marginTop: 2,
+  },
+  confirmBtn: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 10,
+  },
+  confirmBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
