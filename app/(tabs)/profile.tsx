@@ -274,7 +274,7 @@ export default function ProfileScreen() {
               <MenuOption
                 icon="add-circle-outline"
                 title="Create New Venue"
-                onPress={() => console.log('Navigate to Create Venue')}
+                onPress={() => router.push('/owner/CreateVenueScreen')}
               />
               <MenuOption
                 icon="create-outline"
@@ -296,7 +296,7 @@ export default function ProfileScreen() {
               <MenuOption
                 icon="add-outline"
                 title="Add New Court"
-                onPress={() => console.log('Navigate to Add Court')}
+                onPress={() => router.push('/owner/add-court')}
                 showBorder={false}
               />
             </View>
@@ -308,12 +308,12 @@ export default function ProfileScreen() {
               <MenuOption
                 icon="ticket-outline"
                 title="My Vouchers"
-                onPress={() => console.log('Navigate to Voucher List')}
+                onPress={() => router.push('/owner/listvoucher')}
               />
               <MenuOption
                 icon="pricetag-outline"
                 title="Create/Edit Voucher"
-                onPress={() => console.log('Navigate to Voucher Management')}
+                onPress={() => router.push('/owner/create')}
                 showBorder={false}
               />
             </View>

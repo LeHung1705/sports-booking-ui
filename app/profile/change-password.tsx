@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Thêm useEffect
 import {
   ActivityIndicator,
   Alert,
@@ -15,18 +15,44 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { authApi } from '../../api/authApi';
+import { userApi } from '../../api/userApi'; // [QUAN TRỌNG] Thêm import này để lấy email
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
+  
+  // State lưu dữ liệu nhập
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // State lưu email người dùng (Lấy ngầm)
+  const [userEmail, setUserEmail] = useState('');
+
+  // State hiển thị
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // ✅ 1. Lấy Email ngay khi vào màn hình
+  useEffect(() => {
+    const fetchEmail = async () => {
+      try {
+        const userData = await userApi.getMyInfo();
+        if (userData && userData.email) {
+          setUserEmail(userData.email);
+          console.log("Sẽ đổi pass cho email:", userData.email);
+        }
+      } catch (error) {
+        console.error("Không lấy được thông tin user", error);
+        Alert.alert("Lỗi", "Không tải được thông tin người dùng");
+      }
+    };
+    fetchEmail();
+  }, []);
+
   const handleUpdate = async () => {
+    // Validate cơ bản
     if (!currentPassword || !newPassword || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -37,15 +63,38 @@ export default function ChangePasswordScreen() {
       return;
     }
 
+    if (!userEmail) {
+        Alert.alert('Error', 'User email not found. Please try reloading.');
+        return;
+    }
+
     try {
       setLoading(true);
-      await authApi.logout(); // placeholder; replace with real changePassword API when available
-      Alert.alert('Success', 'Password updated', [
-        { text: 'OK', onPress: () => router.back() },
+      
+      // ✅ 2. GỌI API THẬT (Thay vì gọi logout như cũ)
+      await authApi.changePassword({
+        email: userEmail,
+        currentPassword: currentPassword,
+        newPassword: newPassword
+      });
+
+      // Nếu thành công (Không nhảy vào catch)
+      Alert.alert('Success', 'Password updated successfully! Please login again.', [
+        { 
+            text: 'OK', 
+            onPress: async () => {
+                // Tùy chọn: Tự động logout luôn cho an toàn
+                try { await authApi.logout(); } catch(e) {} 
+                router.replace('/(auth)/login'); 
+            } 
+        },
       ]);
-    } catch (error) {
+
+    } catch (error: any) {
       console.error('Failed to change password', error);
-      Alert.alert('Error', 'Could not update password. Please try again.');
+      // Lấy thông báo lỗi từ Backend trả về (nếu có)
+      const message = error.response?.data?.message || 'Could not update password. Please check your current password.';
+      Alert.alert('Error', message);
     } finally {
       setLoading(false);
     }
@@ -213,3 +262,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+
+
+
+
+
+
+
+
