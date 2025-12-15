@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { authApi } from '../../api/authApi';
 import { userApi } from '../../api/userApi'; // [QUAN TRỌNG] Thêm import này để lấy email
+import CustomHeader from '@/components/ui/CustomHeader';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -138,13 +139,7 @@ export default function ChangePasswordScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={22} color={Colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Change Password</Text>
-          <View style={{ width: 22 }} />
-        </View>
+        <CustomHeader title="Change Password" showBackButton />
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.sectionCard}>

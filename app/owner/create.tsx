@@ -4,6 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import apiClient from '../../api/apiClient'; // ✅ Dùng chung apiClient của dự án
+import CustomHeader from '@/components/ui/CustomHeader';
 
 interface Venue {
   id: string;
@@ -120,9 +121,10 @@ export default function CreateVoucherScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Create Voucher", headerShadowVisible: false }} />
-      
+      <Stack.Screen options={{ headerShown: false }} />
+
       <View style={styles.container}>
+        <CustomHeader title="Create Voucher" showBackButton />
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
           {/* VOUCHER CODE */}

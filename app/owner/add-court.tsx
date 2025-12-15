@@ -8,6 +8,7 @@ import { Colors } from '../../constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
 import { courtApi, CourtCreateRequest } from '../../api/courtApi';
 import apiClient from '../../api/apiClient';
+import CustomHeader from '@/components/ui/CustomHeader';
 
 const sportOptions = [
   { key: 'tennis', label: 'Tennis', icon: 'tennisball-outline' },
@@ -134,7 +135,9 @@ export default function AddCourtScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
+      <CustomHeader title="Add Court" showBackButton />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.card}>
         
         {/* --- Ô CHỌN VENUE (LOGIC MỚI) --- */}
@@ -239,53 +242,54 @@ export default function AddCourtScreen() {
         </View>
       </View>
 
-      {/* --- MODAL CHỌN VENUE --- */}
-      <Modal visible={venueModalVisible} animationType="slide" transparent>
+        {/* --- MODAL CHỌN VENUE --- */}
+        <Modal visible={venueModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-                <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: 15}}>
-                    <Text style={styles.modalTitle}>Chọn Venue của bạn</Text>
-                    <TouchableOpacity onPress={() => setVenueModalVisible(false)}>
-                        <Ionicons name="close" size={24} color="#666" />
-                    </TouchableOpacity>
-                </View>
-                
-                {venueList.length === 0 ? (
-                    <View style={{alignItems:'center', padding: 20}}>
-                        <Text style={{color: '#666', marginBottom: 10}}>Bạn chưa có Venue nào.</Text>
-                        <TouchableOpacity onPress={() => {setVenueModalVisible(false); router.push('/owner/CreateVenueScreen')}}>
-                            <Text style={{color: Colors.primary, fontWeight:'bold'}}>+ Tạo Venue mới</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <FlatList 
-                        data={venueList}
-                        keyExtractor={(item) => item.id}
-                        renderItem={({item}) => (
-                            <TouchableOpacity 
-                                style={styles.venueItem}
-                                onPress={() => handleSelectVenue(item)}
-                            >
-                                <View style={{width: 40, height: 40, borderRadius: 20, backgroundColor: '#E0F2F1', alignItems:'center', justifyContent:'center'}}>
-                                    <Ionicons name="business" size={20} color={Colors.primary} />
-                                </View>
-                                <View style={{marginLeft: 12, flex: 1}}>
-                                    <Text style={styles.venueName}>{item.name}</Text>
-                                    <Text style={styles.venueAddress} numberOfLines={1}>{item.address}</Text>
-                                </View>
-                                {targetVenueId === item.id && (
-                                    <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                                )}
-                            </TouchableOpacity>
-                        )}
-                    />
-                )}
+          <View style={styles.modalContent}>
+            <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: 15}}>
+              <Text style={styles.modalTitle}>Chọn Venue của bạn</Text>
+              <TouchableOpacity onPress={() => setVenueModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
             </View>
+                
+            {venueList.length === 0 ? (
+              <View style={{alignItems:'center', padding: 20}}>
+                <Text style={{color: '#666', marginBottom: 10}}>Bạn chưa có Venue nào.</Text>
+                <TouchableOpacity onPress={() => {setVenueModalVisible(false); router.push('/owner/CreateVenueScreen')}}>
+                  <Text style={{color: Colors.primary, fontWeight:'bold'}}>+ Tạo Venue mới</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <FlatList 
+                data={venueList}
+                keyExtractor={(item) => item.id}
+                renderItem={({item}) => (
+                  <TouchableOpacity 
+                    style={styles.venueItem}
+                    onPress={() => handleSelectVenue(item)}
+                  >
+                    <View style={{width: 40, height: 40, borderRadius: 20, backgroundColor: '#E0F2F1', alignItems:'center', justifyContent:'center'}}>
+                      <Ionicons name="business" size={20} color={Colors.primary} />
+                    </View>
+                    <View style={{marginLeft: 12, flex: 1}}>
+                      <Text style={styles.venueName}>{item.name}</Text>
+                      <Text style={styles.venueAddress} numberOfLines={1}>{item.address}</Text>
+                    </View>
+                    {targetVenueId === item.id && (
+                      <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
         </View>
-      </Modal>
-      {/* ------------------------- */}
+        </Modal>
+        {/* ------------------------- */}
 
-    </ScrollView>
+        </ScrollView>
+      </View>
   );
 }
 

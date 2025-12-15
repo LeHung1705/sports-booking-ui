@@ -12,6 +12,7 @@ import * as Location from 'expo-location';
 import DateTimePicker from '@react-native-community/datetimepicker'; 
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
+import CustomHeader from '@/components/ui/CustomHeader';
 
 // ⬇️ CHANGED: dùng apiClient chung thay vì axios + tự gắn token
 import apiClient from '../../api/apiClient';
@@ -22,6 +23,8 @@ const CreateVenueScreen = () => {
   // State Form
   const [name, setName] = useState<string>('');
   const [address, setAddress] = useState<string>('');
+  const [city, setCity] = useState<string>('');
+  const [district, setDistrict] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -112,6 +115,12 @@ const CreateVenueScreen = () => {
       return;
     }
 
+    // City/District optional? Bạn muốn lưu dữ liệu nhập, nên vẫn cho phép trống nhưng khuyến cáo
+    if (!city || !district) {
+      Alert.alert("Thiếu thông tin", "Vui lòng nhập City và District để lưu chính xác.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -119,8 +128,8 @@ const CreateVenueScreen = () => {
       const payload = {
         name,
         address,
-        district: "Thủ Đức", // tạm hard-code
-        city: "Hồ Chí Minh",
+        district,
+        city,
         phone,
         description,
         imageUrl: images.length > 0 ? images[0] : "", 
@@ -188,15 +197,10 @@ const CreateVenueScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Venue</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
+      <CustomHeader
+        title="Create Venue"
+        showBackButton
+      />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
@@ -226,6 +230,29 @@ const CreateVenueScreen = () => {
               value={address} onChangeText={setAddress}
             />
             <Ionicons name="location-sharp" size={20} color="#9CA3AF" style={styles.inputIcon} />
+          </View>
+        </View>
+
+        <View style={{flexDirection: 'row', gap: 12, marginBottom: 18}}>
+          <View style={{flex: 1}}>
+            <Text style={styles.label}>City</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., Ho Chi Minh"
+              placeholderTextColor="#9CA3AF"
+              value={city}
+              onChangeText={setCity}
+            />
+          </View>
+          <View style={{flex: 1}}>
+            <Text style={styles.label}>District</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., Thu Duc"
+              placeholderTextColor="#9CA3AF"
+              value={district}
+              onChangeText={setDistrict}
+            />
           </View>
         </View>
 
