@@ -1,9 +1,10 @@
 import { venueApi } from "@/api/venueApi";
 import CourtCard from "@/components/common/CourtCard";
+import CustomHeader from "@/components/ui/CustomHeader";
 import { Colors } from "@/constants/Colors";
 import type { VenueDetail, VenueDetailCourtItem } from "@/types/venue";
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -78,16 +79,7 @@ export default function VenueDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
-
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={22} color={Colors.text} />
-        </TouchableOpacity>
-        <Text numberOfLines={1} style={styles.headerTitle}>
-          {venue.name}
-        </Text>
-      </View>
+      <CustomHeader title={venue.name} showBackButton={true} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {venue.imageUrl ? (
