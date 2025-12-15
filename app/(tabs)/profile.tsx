@@ -1,4 +1,5 @@
 // app/(tabs)/profile.tsx
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -11,17 +12,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { adminApi } from '../../api/adminApi';
 import { authApi } from '../../api/authApi';
-import { userApi } from '../../api/userApi';
 import { bookingApi } from '../../api/bookingApi';
+import { userApi } from '../../api/userApi';
+import { Colors } from '../../constants/Colors';
 import { User } from '../../types/User';
 import { BookingListResponse } from "../../types/booking";
-import { Colors } from '../../constants/Colors';
 
+import MenuOption from '../../components/profile/MenuOption';
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import StatsCard from '../../components/profile/StatsCard';
-import MenuOption from '../../components/profile/MenuOption';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -32,6 +33,9 @@ export default function ProfileScreen() {
   // Owner specific state
   const [pendingBookings, setPendingBookings] = useState<BookingListResponse[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  // Admin specific state
+  const [adminStats, setAdminStats] = useState<{ users: number; venues: number; pendingVenues: number } | null>(null);
 
   // 1. Fetch User Data (Logic từ feature/user-history: Tối ưu UX)
   useFocusEffect(
@@ -65,8 +69,11 @@ export default function ProfileScreen() {
 
   // 2. Fetch Owner Pending Bookings (Logic từ feature/booking: Tính năng Owner)
   useEffect(() => {
-    if (user?.role && user.role.toUpperCase().includes('OWNER')) {
+    if (user?.role === 'ROLE_OWNER') {
       fetchPendingBookings();
+    }
+    if (user?.role === 'ROLE_ADMIN') {
+      fetchAdminStats();
     }
   }, [user]);
 
@@ -76,6 +83,22 @@ export default function ProfileScreen() {
       setPendingBookings(bookings);
     } catch (error) {
       console.error("Failed to fetch pending bookings", error);
+    }
+  };
+
+  const fetchAdminStats = async () => {
+    try {
+      const [stats, pendingVenues] = await Promise.all([
+        adminApi.getStats(),
+        adminApi.getPendingVenues()
+      ]);
+      setAdminStats({
+        users: stats.totalUsers,
+        venues: stats.totalVenues,
+        pendingVenues: pendingVenues.length
+      });
+    } catch (error) {
+      console.error("Failed to fetch admin stats", error);
     }
   };
 
@@ -170,7 +193,7 @@ export default function ProfileScreen() {
                 <MenuOption
                   icon="person-outline"
                   title="Edit Profile"
-                  onPress={() => router.push('/profile/edit')}
+                  onPress={() => router.push('./profile/edit')}
                 />
                 <MenuOption
                   icon="card-outline"
@@ -180,7 +203,7 @@ export default function ProfileScreen() {
                 <MenuOption
                   icon="lock-closed-outline"
                   title="Change Password"
-                  onPress={() => router.push('/profile/change-password')}
+                  onPress={() => router.push('./index')}
                   showBorder={false}
                 />
               </View>
@@ -305,14 +328,14 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>SYSTEM MANAGEMENT</Text>
           <View style={styles.menuCard}>
             <MenuOption
-              icon="business"
-              title="All Venues"
-              onPress={() => Alert.alert('Coming Soon', 'Navigate to All Venues Screen')}
+              icon="checkmark-circle-outline"
+              title="Phê duyệt Venue mới"
+              onPress={() => router.push('/admin/approve-venues')}
             />
             <MenuOption
-              icon="people"
-              title="User Manager"
-              onPress={() => console.log('Navigate to User Manager')}
+              icon="people-outline"
+              title="Nâng cấp User -> Owner"
+              onPress={() => router.push('/admin/manage-users')}
             />
             <MenuOption
               icon="bar-chart-outline"
@@ -356,14 +379,13 @@ export default function ProfileScreen() {
 
       {/* User stats or Admin system status */}
       {(user.role || 'USER').toUpperCase().includes('ADMIN') ? (
-        <View style={styles.statusCard}>
-          <View style={styles.statusIconRow}>
-            <Ionicons name="server-outline" size={22} color={Colors.primary} />
-            <View style={styles.statusDot} />
-          </View>
-          <Text style={styles.statusTitle}>System Operational</Text>
-          <Text style={styles.statusSubtitle}>All services are running normally</Text>
-        </View>
+        <StatsCard
+          items={[
+            { label: 'Total Users', value: adminStats?.users },
+            { label: 'Total Venues', value: adminStats?.venues },
+            { label: 'Pending Venues', value: adminStats?.pendingVenues, bold: true },
+          ]}
+        />
       ) : (user.role || 'USER').toUpperCase().includes('OWNER') ? (
         <StatsCard
           items={[
