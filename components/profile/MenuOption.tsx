@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 
 export interface MenuOptionProps {
@@ -19,38 +19,41 @@ export default function MenuOption({
   color = Colors.primary 
 }: MenuOptionProps) {
   return (
-    <TouchableOpacity style={[styles.container, !showBorder && styles.noBorder]} onPress={onPress}>
-      <View style={styles.iconContainer}>
-        <Ionicons name={icon} size={20} color={color} />
+    <TouchableOpacity 
+      style={[styles.container, !showBorder && styles.noBorder]} 
+      onPress={onPress}
+    >
+      <View style={styles.row}>
+        <View style={styles.iconContainer}>
+          <Ionicons name={icon} size={20} color={color} />
+        </View>
+        <Text style={styles.title}>{title}</Text>
+        <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 18,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
   noBorder: {
     borderBottomWidth: 0,
   },
-  iconContainer: {
-    width: 28,
-    height: 28,
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between', // Đẩy mũi tên ra cuối dòng
+  },
+  iconContainer: {
     marginRight: 12,
   },
   title: {
+    flex: 1, // Đẩy text chiếm không gian còn lại
     fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 0.2,
+    color: Colors.text,
   },
 });
