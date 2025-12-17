@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
-import { adminApi, AdminUserItem } from '../../api/adminApi';
-import { Colors } from '../../constants/Colors';
-import CustomHeader from '../../components/ui/CustomHeader';
 import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { adminApi, AdminUserItem } from '../../api/adminApi';
+import CustomHeader from '../../components/ui/CustomHeader';
+import { Colors } from '../../constants/Colors';
 
 export default function ManageUsersScreen() {
   const [users, setUsers] = useState<AdminUserItem[]>([]);
@@ -56,7 +56,7 @@ export default function ManageUsersScreen() {
               await adminApi.upgradeUserToOwner(uid);
               Alert.alert("Success", "User upgraded to OWNER.");
               // Update local state instead of refetching everything for better UX
-              setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role: 'ROLE_OWNER' } : u));
+              setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role: 'OWNER' } : u));
             } catch (error) {
               Alert.alert("Error", "Failed to upgrade user.");
             } finally {
@@ -68,9 +68,35 @@ export default function ManageUsersScreen() {
     );
   };
 
+  const handleDegrade = async (uid: string, name: string) => {
+    Alert.alert(
+      "Confirm Degrade",
+      `Are you sure you want to degrade "${name}" to User?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Degrade",
+          onPress: async () => {
+            setProcessingId(uid);
+            try {
+              await adminApi.degradeUserToUser(uid);
+              Alert.alert("Success", "User degraded to USER.");
+              setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role: 'USER' } : u));
+            } catch (error) {
+              Alert.alert("Error", "Failed to degrade user.");
+            } finally {
+              setProcessingId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderItem = ({ item }: { item: AdminUserItem }) => {
-    const isOwner = item.role === 'ROLE_OWNER';
-    const isAdmin = item.role === 'ROLE_ADMIN';
+    const roleUpper = (item.role || '').toUpperCase();
+    const isOwner = roleUpper.includes('OWNER');
+    const isAdmin = roleUpper.includes('ADMIN');
 
     return (
       <View style={styles.card}>
@@ -82,7 +108,7 @@ export default function ManageUsersScreen() {
               ]}>
                   <Text style={[styles.roleText, 
                       isOwner ? styles.textOwner : isAdmin ? styles.textAdmin : styles.textUser
-                  ]}>{item.role.replace('ROLE_', '')}</Text>
+                  ]}>{item.role}</Text>
               </View>
           </View>
 
@@ -96,6 +122,20 @@ export default function ManageUsersScreen() {
                     <ActivityIndicator color="#fff" size="small" />
                  ) : (
                     <Text style={styles.upgradeButtonText}>Upgrade</Text>
+                 )}
+             </TouchableOpacity>
+          )}
+
+          {isOwner && (
+             <TouchableOpacity 
+                style={[styles.degradeButton, processingId === item.uid && styles.disabledButton]}
+                onPress={() => handleDegrade(item.uid, item.fullName)}
+                disabled={processingId === item.uid}
+             >
+                 {processingId === item.uid ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                 ) : (
+                    <Text style={styles.upgradeButtonText}>Degrade</Text>
                  )}
              </TouchableOpacity>
           )}
@@ -212,6 +252,14 @@ const styles = StyleSheet.create({
 
   upgradeButton: {
     backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  degradeButton: {
+    backgroundColor: '#FF9800',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,

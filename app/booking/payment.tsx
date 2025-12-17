@@ -27,7 +27,8 @@ export default function PaymentScreen() {
   
   // Generate VietQR URL
   // Format: https://img.vietqr.io/image/<BANK_BIN>-<ACCOUNT_NO>-<TEMPLATE>.png?amount=<AMOUNT>&addInfo=<CONTENT>&accountName=<NAME>
-  const qrUrl = `https://img.vietqr.io/image/${bankBin}-${bankAccount}-compact.png?amount=${totalAmount}&addInfo=BOOKING ${bookingId}`;
+  const transferContent = `${bookingId} da chuyen khoan thanh cong`;
+  const qrUrl = `https://img.vietqr.io/image/${bankBin}-${bankAccount}-compact.png?amount=${totalAmount}&addInfo=${encodeURIComponent(transferContent)}`;
 
   const handleConfirmPayment = async () => {
     if (!bookingId) return;
@@ -80,7 +81,7 @@ export default function PaymentScreen() {
             Scan the QR code with your banking app to pay.
           </Text>
           <Text style={styles.note}>
-            Transfer Content: <Text style={{fontWeight: 'bold'}}>BOOKING {bookingId?.slice(0, 8)}...</Text>
+            Transfer Content: <Text style={{fontWeight: 'bold', fontSize: 11}}>{transferContent}</Text>
           </Text>
 
            {/* Owner Bank Info Details (Fallback text) */}

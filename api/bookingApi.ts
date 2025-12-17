@@ -27,11 +27,16 @@ export const bookingApi = {
   },
 
   /**
-   * List owner's bookings
+   * List owner's bookings with filters
    * GET /api/v1/bookings/owner
    */
-  getOwnerBookings: async (): Promise<BookingListResponse[]> => {
-      const res = await apiClient.get<BookingListResponse[]>("/bookings/owner");
+  getOwnerBookings: async (params?: { statuses?: string[]; venueId?: string; from?: string; to?: string }): Promise<BookingListResponse[]> => {
+      const res = await apiClient.get<BookingListResponse[]>("/bookings/owner", { 
+        params,
+        paramsSerializer: {
+           indexes: null // This ensures arrays are sent as `statuses=A&statuses=B` (no brackets) which Spring Boot prefers
+        }
+      });
       return res.data;
   },
 
@@ -122,5 +127,15 @@ export const bookingApi = {
   confirmBooking: async (bookingId: string): Promise<import("../types/booking").BookingDetailResponse> => {
       const res = await apiClient.put<import("../types/booking").BookingDetailResponse>(`/bookings/${bookingId}/confirm-payment`);
       return res.data;
+  },
+
+  /**
+   * Get revenue stats for owner
+   * GET /api/v1/bookings/owner/revenue-stats
+   */
+  getRevenueStats: async (params?: { from?: string; to?: string }): Promise<{date: string, value: number, count: number}[]> => {
+    const res = await apiClient.get<{date: string, value: number, count: number}[]>("/bookings/owner/revenue-stats", { params });
+    return res.data;
   }
 };
+

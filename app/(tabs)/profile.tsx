@@ -22,6 +22,7 @@ import { BookingListResponse } from "../../types/booking";
 
 import MenuOption from '../../components/profile/MenuOption';
 import ProfileHeader from '../../components/profile/ProfileHeader';
+import RevenueChart from '../../components/profile/RevenueChart';
 import StatsCard from '../../components/profile/StatsCard';
 
 export default function ProfileScreen() {
@@ -33,6 +34,7 @@ export default function ProfileScreen() {
   // Owner specific state
   const [pendingBookings, setPendingBookings] = useState<BookingListResponse[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [chartStats, setChartStats] = useState<{ revenue: number; bookings: number; label: string } | null>(null);
 
   // Admin specific state
   const [adminStats, setAdminStats] = useState<{ users: number; venues: number; pendingVenues: number } | null>(null);
@@ -69,10 +71,11 @@ export default function ProfileScreen() {
 
   // 2. Fetch Owner Pending Bookings (Logic từ feature/booking: Tính năng Owner)
   useEffect(() => {
-    if (user?.role === 'ROLE_OWNER') {
+    const role = (user?.role || '').toUpperCase();
+    if (role.includes('OWNER')) {
       fetchPendingBookings();
     }
-    if (user?.role === 'ROLE_ADMIN') {
+    if (role.includes('ADMIN')) {
       fetchAdminStats();
     }
   }, [user]);
@@ -88,14 +91,11 @@ export default function ProfileScreen() {
 
   const fetchAdminStats = async () => {
     try {
-      const [stats, pendingVenues] = await Promise.all([
-        adminApi.getStats(),
-        adminApi.getPendingVenues()
-      ]);
+      const stats = await adminApi.getStats();
       setAdminStats({
         users: stats.totalUsers,
         venues: stats.totalVenues,
-        pendingVenues: pendingVenues.length
+        pendingVenues: stats.pendingVenues ?? 0
       });
     } catch (error) {
       console.error("Failed to fetch admin stats", error);
@@ -215,7 +215,7 @@ export default function ProfileScreen() {
                 <MenuOption
                   icon="time-outline"
                   title="Booking History"
-                  onPress={() => Alert.alert('Coming Soon', 'Booking history feature will be available soon')}
+                  onPress={() => router.push('/booking/my_bookings')}
                 />
                 <MenuOption
                   icon="heart-outline"
@@ -232,6 +232,8 @@ export default function ProfileScreen() {
     if (role.includes('OWNER')) {
       return (
         <>
+          <RevenueChart onStatsChange={(rev, bks, lbl) => setChartStats({ revenue: rev, bookings: bks, label: lbl })} />
+          
           {/* Section Booking Chờ Duyệt của Owner */}
           {pendingBookings.length > 0 && (
              <View style={styles.menuSection}>
@@ -241,7 +243,10 @@ export default function ProfileScreen() {
                         <View key={item.id} style={styles.pendingItem}>
                             <View style={{flex: 1}}>
                                 <Text style={styles.pendingCourt}>{item.court} - {item.venue}</Text>
-                                <Text style={styles.pendingUser}>{item.userName || "Khách"}</Text>
+                                <Text style={styles.pendingUser}>
+                                  {item.userName || "Khách"} {item.userId ? `(#${item.userId.substring(0, 8)})` : ''}
+                                </Text>
+                                <Text style={styles.pendingId}>ID: {item.id}</Text>
                                 <Text style={styles.pendingPrice}>
                                     {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalPrice)}
                                 </Text>
@@ -266,6 +271,11 @@ export default function ProfileScreen() {
           <View style={styles.menuSection}>
             <Text style={styles.sectionTitle}>VENUE MANAGEMENT</Text>
             <View style={styles.menuCard}>
+              <MenuOption
+                icon="stats-chart-outline"
+                title="Booking History & Revenue"
+                onPress={() => router.push('/owner/history')}
+              />
               <MenuOption
                 icon="business-outline"
                 title="My Venue Details"
@@ -334,7 +344,7 @@ export default function ProfileScreen() {
             />
             <MenuOption
               icon="people-outline"
-              title="Nâng cấp User -> Owner"
+              title="Quản lý users"
               onPress={() => router.push('/admin/manage-users')}
             />
             <MenuOption
@@ -389,8 +399,8 @@ export default function ProfileScreen() {
       ) : (user.role || 'USER').toUpperCase().includes('OWNER') ? (
         <StatsCard
           items={[
-            { label: 'Total Revenue', value: stats.owner.formatCompact(stats.owner.revenue), bold: true },
-            { label: 'Total Bookings', value: stats.owner.bookings },
+            { label: chartStats ? `Revenue (${chartStats.label})` : 'Total Revenue', value: chartStats ? stats.owner.formatCompact(chartStats.revenue) : stats.owner.formatCompact(stats.owner.revenue), bold: true },
+            { label: chartStats ? `Bookings (${chartStats.label})` : 'Total Bookings', value: chartStats ? chartStats.bookings : stats.owner.bookings },
             { label: 'Active Courts', value: stats.owner.activeCourts },
           ]}
         />
@@ -605,6 +615,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+  },
+  pendingId: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 1,
+    fontFamily: 'monospace',
   },
   pendingPrice: {
     fontSize: 13,

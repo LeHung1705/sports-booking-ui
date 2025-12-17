@@ -20,6 +20,7 @@ export interface BookingListResponse {
   id: string;
   venue: string;
   court: string;
+  userId?: string;
   userName?: string;
   startTime: string;
   endTime: string;
