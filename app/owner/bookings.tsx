@@ -1,5 +1,5 @@
 import CustomHeader from "@/components/ui/CustomHeader";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,16 +17,26 @@ import { BookingListResponse } from "../../types/booking";
 const PRIMARY = "#00A36C";
 
 export default function OwnerBookingsScreen() {
-  const router = useRouter();
   const [bookings, setBookings] = useState<BookingListResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<'REFUND_PENDING' | 'AWAITING_CONFIRM' | 'CONFIRMED'>('REFUND_PENDING');
 
   const fetchBookings = async () => {
     try {
       const data = await bookingApi.getOwnerBookings();
-      setBookings(data);
+      // Sort: REFUND_PENDING, AWAITING_CONFIRM first, then others by startTime DESC
+      const sorted = data.sort((a, b) => {
+          const priorityStatus = ["REFUND_PENDING", "AWAITING_CONFIRM", "PENDING_PAYMENT"];
+          const aPriority = priorityStatus.includes(a.status) ? priorityStatus.indexOf(a.status) : 99;
+          const bPriority = priorityStatus.includes(b.status) ? priorityStatus.indexOf(b.status) : 99;
+          
+          if (aPriority !== bPriority) return aPriority - bPriority;
+          
+          return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
+      });
+      setBookings(sorted);
     } catch (error) {
       console.error("Failed to fetch bookings:", error);
       Alert.alert("Lỗi", "Không thể tải danh sách đặt sân.");
@@ -86,6 +96,37 @@ export default function OwnerBookingsScreen() {
     );
   };
 
+  const handleConfirmRefund = (bookingId: string) => {
+      Alert.alert(
+        "Xác nhận hoàn tiền",
+        "Bạn có chắc chắn đã chuyển khoản hoàn tiền cho khách?",
+        [
+          { text: "Hủy", style: "cancel" },
+          {
+            text: "Xác nhận",
+            onPress: async () => {
+              setLoadingId(bookingId);
+              try {
+                await bookingApi.confirmRefund(bookingId);
+                setBookings((prev) =>
+                  prev.map((booking) =>
+                    booking.id === bookingId
+                      ? { ...booking, status: "CANCELED" }
+                      : booking
+                  )
+                );
+                Alert.alert("Thành công", "Đã xác nhận hoàn tiền.");
+              } catch (error: any) {
+                Alert.alert("Lỗi", error.message || "Không thể xác nhận hoàn tiền.");
+              } finally {
+                setLoadingId(null);
+              }
+            }
+          }
+        ]
+      );
+  };
+
   const formatDateTime = (isoString: string) => {
     const date = new Date(isoString);
     return {
@@ -131,9 +172,49 @@ export default function OwnerBookingsScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Refund Pending Section */}
+        {item.status === "REFUND_PENDING" && (
+            <View style={[styles.cardFooter, { backgroundColor: '#FFF0F0', padding: 12, borderRadius: 8 }]}>
+                <Text style={[styles.noteText, { color: '#D32F2F', fontWeight: 'bold' }]}>Yêu cầu hoàn tiền:</Text>
+                <Text style={styles.refundInfo}>Số tiền: {item.refundAmount?.toLocaleString('vi-VN')} VND</Text>
+                <Text style={styles.refundInfo}>Ngân hàng: {item.refundBankName}</Text>
+                <Text style={styles.refundInfo} selectable={true}>STK: {item.refundAccountNumber}</Text>
+                <Text style={styles.refundInfo}>Chủ TK: {item.refundAccountName}</Text>
+
+                <TouchableOpacity
+                    style={[styles.confirmButton, { backgroundColor: '#D32F2F', marginTop: 10 }, loadingId === item.id && styles.disabledButton]}
+                    onPress={() => handleConfirmRefund(item.id)}
+                    disabled={loadingId === item.id}
+                >
+                     {loadingId === item.id ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                        <Text style={styles.confirmButtonText}>Xác nhận đã hoàn tiền</Text>
+                    )}
+                </TouchableOpacity>
+            </View>
+        )}
       </View>
     );
   };
+
+  const counts = {
+      REFUND_PENDING: bookings.filter(b => b.status === 'REFUND_PENDING').length,
+      AWAITING_CONFIRM: bookings.filter(b => b.status === 'AWAITING_CONFIRM' || b.status === 'PENDING_PAYMENT').length,
+      CONFIRMED: bookings.filter(b => b.status === 'CONFIRMED').length
+  };
+  
+  // Map PENDING_PAYMENT to AWAITING_CONFIRM category for display if needed, or handle separately.
+  // User asked for 'AWAITING_CONFIRM', but we have 'PENDING_PAYMENT' too.
+  // I will group PENDING_PAYMENT into AWAITING_CONFIRM for simplicity as they are both "Actionable" or "Pending".
+  
+  const filteredData = bookings.filter(b => {
+      if (selectedCategory === 'AWAITING_CONFIRM') {
+          return b.status === 'AWAITING_CONFIRM' || b.status === 'PENDING_PAYMENT';
+      }
+      return b.status === selectedCategory;
+  });
 
   if (loading && !refreshing && bookings.length === 0) {
       return (
@@ -147,12 +228,50 @@ export default function OwnerBookingsScreen() {
     <View style={styles.container}>
       <CustomHeader title="Quản lý đặt sân" showBackButton={true} />
 
+      <View style={styles.categoryContainer}>
+        <TouchableOpacity 
+            style={[
+                styles.categoryBtn, 
+                { borderColor: '#D32F2F', backgroundColor: selectedCategory === 'REFUND_PENDING' ? '#D32F2F' : '#fff' }
+            ]}
+            onPress={() => setSelectedCategory('REFUND_PENDING')}
+        >
+            <Text style={[styles.categoryText, { color: selectedCategory === 'REFUND_PENDING' ? '#fff' : '#D32F2F' }]}>
+                Hoàn tiền ({counts.REFUND_PENDING})
+            </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+            style={[
+                styles.categoryBtn, 
+                { borderColor: '#007AFF', backgroundColor: selectedCategory === 'AWAITING_CONFIRM' ? '#007AFF' : '#fff' }
+            ]}
+            onPress={() => setSelectedCategory('AWAITING_CONFIRM')}
+        >
+            <Text style={[styles.categoryText, { color: selectedCategory === 'AWAITING_CONFIRM' ? '#fff' : '#007AFF' }]}>
+                Chờ duyệt ({counts.AWAITING_CONFIRM})
+            </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+            style={[
+                styles.categoryBtn, 
+                { borderColor: PRIMARY, backgroundColor: selectedCategory === 'CONFIRMED' ? PRIMARY : '#fff' }
+            ]}
+            onPress={() => setSelectedCategory('CONFIRMED')}
+        >
+            <Text style={[styles.categoryText, { color: selectedCategory === 'CONFIRMED' ? '#fff' : PRIMARY }]}>
+                Đã duyệt ({counts.CONFIRMED})
+            </Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
-        data={bookings}
+        data={filteredData}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<Text style={styles.emptyText}>Không có đơn đặt sân nào</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>Không có đơn đặt sân nào trong mục này</Text>}
         refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -187,6 +306,11 @@ function StatusBadge({ status }: { status: string }) {
           color = "#007AFF";
           label = "Chờ xác nhận";
           bg = "#E6F2FF";
+          break;
+      case "REFUND_PENDING":
+          color = "#D32F2F";
+          label = "Chờ hoàn tiền";
+          bg = "#FFEBEE";
           break;
       default:
           label = status;
@@ -294,6 +418,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 14,
   },
+  refundInfo: {
+      fontSize: 14,
+      color: '#333',
+      marginBottom: 2,
+  },
   disabledButton: {
       backgroundColor: '#ccc',
   },
@@ -310,5 +439,50 @@ const styles = StyleSheet.create({
       textAlign: 'center',
       color: '#999',
       marginTop: 40,
-  }
+  },
+  categoryContainer: {
+      flexDirection: 'row',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: '#fff',
+      borderBottomWidth: 1,
+      borderBottomColor: '#f0f0f0',
+      gap: 10,
+  },
+  categoryBtn: {
+      flex: 1,
+      paddingVertical: 8,
+      paddingHorizontal: 4,
+      borderRadius: 20,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#fff',
+  },
+  categoryBtnActive: {
+      // Background color is handled inline for dynamic colors or I can set a default here
+      // But I used inline styles for active background color based on logic? 
+      // Actually I used inline logic for text color but not background color in the previous step?
+      // Let's check previous step.
+      // style={[..., selectedCategory === ... && styles.categoryBtnActive, { borderColor: ... }]}
+      // I need to define categoryBtnActive background color dynamically or set it in inline style.
+      // Since I used inline logic for color, I should probably use inline logic for background color too.
+      // But I can't easily edit the previous step now.
+      // I'll make categoryBtnActive generic or override it in inline style.
+      // Wait, I see I didn't set backgroundColor in inline style for Active. 
+      // I used `styles.categoryBtnActive`.
+      // I should update the JSX to include inline background color or define it here.
+      // Since I can't update JSX easily without re-doing it, I'll rely on generic active style or...
+      // Actually, I can use a default active color or just rely on the border.
+      // Let's look at the JSX again:
+      // style={[styles.categoryBtn, selectedCategory === 'REFUND_PENDING' && styles.categoryBtnActive, { borderColor: '#D32F2F' }]}
+      // If I define categoryBtnActive here:
+  },
+  categoryText: {
+      fontSize: 12,
+      fontWeight: '600',
+  },
+  categoryTextActive: {
+      color: '#fff',
+  },
 });

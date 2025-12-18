@@ -62,10 +62,22 @@ export const bookingApi = {
    * Cancel a booking
    * PUT /api/v1/bookings/{id}/cancel
    */
-  cancelBooking: async (id: string, reason: string): Promise<import("../types/booking").BookingCancelResponse> => {
-      const res = await apiClient.put<import("../types/booking").BookingCancelResponse>(`/bookings/${id}/cancel`, {
-          cancelReason: reason
-      });
+  cancelBooking: async (
+    id: string, 
+    reason: string, 
+    bankInfo?: { 
+      bankName: string; 
+      accountNumber: string; 
+      accountHolderName: string 
+    }
+  ): Promise<import("../types/booking").BookingCancelResponse> => {
+      const payload: any = { cancel_reason: reason };
+      if (bankInfo) {
+          payload.bank_name = bankInfo.bankName;
+          payload.account_number = bankInfo.accountNumber;
+          payload.account_holder_name = bankInfo.accountHolderName;
+      }
+      const res = await apiClient.put<import("../types/booking").BookingCancelResponse>(`/bookings/${id}/cancel`, payload);
       return res.data;
   },
 
@@ -126,6 +138,15 @@ export const bookingApi = {
    */
   confirmBooking: async (bookingId: string): Promise<import("../types/booking").BookingDetailResponse> => {
       const res = await apiClient.put<import("../types/booking").BookingDetailResponse>(`/bookings/${bookingId}/confirm-payment`);
+      return res.data;
+  },
+
+  /**
+   * Confirm refund (Owner action)
+   * PUT /api/v1/bookings/{id}/refund-confirm
+   */
+  confirmRefund: async (bookingId: string): Promise<import("../types/booking").BookingDetailResponse> => {
+      const res = await apiClient.put<import("../types/booking").BookingDetailResponse>(`/bookings/${bookingId}/refund-confirm`);
       return res.data;
   },
 

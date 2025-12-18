@@ -193,7 +193,7 @@ export default function ProfileScreen() {
                 <MenuOption
                   icon="person-outline"
                   title="Edit Profile"
-                  onPress={() => router.push('./profile/edit')}
+                  onPress={() => router.push('/profile/edit')}
                 />
                 <MenuOption
                   icon="card-outline"
@@ -203,7 +203,7 @@ export default function ProfileScreen() {
                 <MenuOption
                   icon="lock-closed-outline"
                   title="Change Password"
-                  onPress={() => router.push('./index')}
+                  onPress={() => router.push('/profile/change-password')}
                   showBorder={false}
                 />
               </View>
@@ -234,6 +234,23 @@ export default function ProfileScreen() {
         <>
           <RevenueChart onStatsChange={(rev, bks, lbl) => setChartStats({ revenue: rev, bookings: bks, label: lbl })} />
           
+          <View style={styles.menuSection}>
+              <Text style={styles.sectionTitle}>ACCOUNT</Text>
+              <View style={styles.menuCard}>
+                <MenuOption
+                  icon="person-outline"
+                  title="Edit Profile"
+                  onPress={() => router.push('/profile/edit')}
+                />
+                <MenuOption
+                  icon="lock-closed-outline"
+                  title="Change Password"
+                  onPress={() => router.push('/profile/change-password')}
+                  showBorder={false}
+                />
+              </View>
+            </View>
+
           {/* Section Booking Chờ Duyệt của Owner */}
           {pendingBookings.length > 0 && (
              <View style={styles.menuSection}>
@@ -269,8 +286,24 @@ export default function ProfileScreen() {
           )}
 
           <View style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>MY ACTIVITY</Text>
+            <View style={styles.menuCard}>
+              <MenuOption
+                icon="time-outline"
+                title="My Booking History"
+                onPress={() => router.push('/booking/my_bookings')}
+              />
+            </View>
+          </View>
+
+          <View style={styles.menuSection}>
             <Text style={styles.sectionTitle}>VENUE MANAGEMENT</Text>
             <View style={styles.menuCard}>
+              <MenuOption
+                icon="calendar-outline"
+                title="Manage Bookings"
+                onPress={() => router.push('/owner/bookings')}
+              />
               <MenuOption
                 icon="stats-chart-outline"
                 title="Booking History & Revenue"
@@ -334,27 +367,40 @@ export default function ProfileScreen() {
 
     if (role.includes('ADMIN')) {
       return (
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>SYSTEM MANAGEMENT</Text>
-          <View style={styles.menuCard}>
-            <MenuOption
-              icon="checkmark-circle-outline"
-              title="Phê duyệt Venue mới"
-              onPress={() => router.push('/admin/approve-venues')}
-            />
-            <MenuOption
-              icon="people-outline"
-              title="Quản lý users"
-              onPress={() => router.push('/admin/manage-users')}
-            />
-            <MenuOption
-              icon="bar-chart-outline"
-              title="Revenue Overview"
-              onPress={() => console.log('Navigate to Revenue Overview')}
-              showBorder={false}
-            />
+        <>
+          <View style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>MY ACTIVITY</Text>
+            <View style={styles.menuCard}>
+              <MenuOption
+                icon="time-outline"
+                title="My Booking History"
+                onPress={() => router.push('/booking/my_bookings')}
+              />
+            </View>
           </View>
-        </View>
+
+          <View style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>SYSTEM MANAGEMENT</Text>
+            <View style={styles.menuCard}>
+              <MenuOption
+                icon="checkmark-circle-outline"
+                title="Phê duyệt Venue mới"
+                onPress={() => router.push('/admin/approve-venues')}
+              />
+              <MenuOption
+                icon="people-outline"
+                title="Quản lý users"
+                onPress={() => router.push('/admin/manage-users')}
+              />
+              <MenuOption
+                icon="bar-chart-outline"
+                title="Revenue Overview"
+                onPress={() => console.log('Navigate to Revenue Overview')}
+                showBorder={false}
+              />
+            </View>
+          </View>
+        </>
       );
     }
     

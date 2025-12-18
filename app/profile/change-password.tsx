@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { authApi } from '../../api/authApi';
 import { userApi } from '../../api/userApi'; // [QUAN TRỌNG] Thêm import này để lấy email
+import CustomHeader from '../../components/ui/CustomHeader';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -135,16 +136,10 @@ export default function ChangePasswordScreen() {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      keyboardVerticalOffset={0}
     >
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={22} color={Colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Change Password</Text>
-          <View style={{ width: 22 }} />
-        </View>
+      <CustomHeader title="Change Password" showBackButton={true} />
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.sectionCard}>
@@ -177,25 +172,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  backButton: {
-    padding: 6,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
-  },
+
   content: {
     paddingHorizontal: 16,
     paddingTop: 20,

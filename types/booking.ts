@@ -26,6 +26,10 @@ export interface BookingListResponse {
   endTime: string;
   totalPrice: number;
   status: string;
+  refundAmount?: number;
+  refundBankName?: string;
+  refundAccountNumber?: string;
+  refundAccountName?: string;
 }
 
 export interface PricingRule {
@@ -77,6 +81,10 @@ export interface BookingDetailResponse {
     status: string;
     returnPayload?: string;
   };
+  refundAmount?: number;
+  refundBankName?: string;
+  refundAccountNumber?: string;
+  refundAccountName?: string;
 }
 
 export interface BookingCancelRequest {
