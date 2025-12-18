@@ -1,13 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Switch, Image, Alert, ActivityIndicator, Modal, FlatList
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Colors } from '../../constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
-import { courtApi, CourtCreateRequest } from '../../api/courtApi';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput, TouchableOpacity,
+  View
+} from 'react-native';
 import apiClient from '../../api/apiClient';
+import { courtApi, CourtCreateRequest } from '../../api/courtApi';
+import { Colors } from '../../constants/Colors';
 import CustomHeader from '@/components/ui/CustomHeader';
 
 const sportOptions = [

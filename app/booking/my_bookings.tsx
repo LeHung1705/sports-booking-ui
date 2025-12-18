@@ -12,6 +12,7 @@ export default function MyBookingsScreen() {
     const [bookings, setBookings] = useState<BookingListResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState<'CONFIRMED' | 'AWAITING_CONFIRM' | 'CANCELED'>('CONFIRMED');
 
     const fetchBookings = async () => {
         try {
@@ -26,6 +27,22 @@ export default function MyBookingsScreen() {
             setRefreshing(false);
         }
     };
+
+    const getCounts = () => {
+        const confirmed = bookings.filter(b => ['CONFIRMED', 'COMPLETED'].includes(b.status)).length;
+        const awaiting = bookings.filter(b => ['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(b.status)).length;
+        const canceled = bookings.filter(b => ['CANCELED', 'REFUND_PENDING', 'REJECTED', 'FAILED'].includes(b.status)).length;
+        return { CONFIRMED: confirmed, AWAITING_CONFIRM: awaiting, CANCELED: canceled };
+    };
+
+    const counts = getCounts();
+
+    const filteredBookings = bookings.filter(b => {
+        if (selectedCategory === 'CONFIRMED') return ['CONFIRMED', 'COMPLETED'].includes(b.status);
+        if (selectedCategory === 'AWAITING_CONFIRM') return ['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(b.status);
+        if (selectedCategory === 'CANCELED') return ['CANCELED', 'REFUND_PENDING', 'REJECTED', 'FAILED'].includes(b.status);
+        return false;
+    });
 
     useFocusEffect(
         useCallback(() => {
@@ -60,7 +77,16 @@ export default function MyBookingsScreen() {
     const renderItem = ({ item }: { item: BookingListResponse }) => (
         <TouchableOpacity 
             style={styles.card}
-            onPress={() => router.push(`/booking/detail?id=${item.id}`)}
+            onPress={() => {
+                if (item.status === 'PENDING_PAYMENT') {
+                    router.push({
+                        pathname: '/booking/checkout',
+                        params: { bookingId: item.id }
+                    });
+                } else {
+                    router.push(`/booking/detail?id=${item.id}`);
+                }
+            }}
         >
             <View style={styles.cardHeader}>
                 <Text style={styles.venueName} numberOfLines={1}>{item.venue || 'Unknown Venue'}</Text>
@@ -92,13 +118,51 @@ export default function MyBookingsScreen() {
         <View style={styles.container}>
             <CustomHeader title="Lịch sử đặt sân" showBackButton={true} />
             
+            <View style={styles.categoryContainer}>
+                <TouchableOpacity 
+                    style={[
+                        styles.categoryBtn, 
+                        { borderColor: Colors.primary, backgroundColor: selectedCategory === 'CONFIRMED' ? Colors.primary : '#fff' }
+                    ]}
+                    onPress={() => setSelectedCategory('CONFIRMED')}
+                >
+                    <Text style={[styles.categoryText, { color: selectedCategory === 'CONFIRMED' ? '#fff' : Colors.primary }]}>
+                        Đã duyệt ({counts.CONFIRMED})
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[
+                        styles.categoryBtn, 
+                        { borderColor: '#FFC107', backgroundColor: selectedCategory === 'AWAITING_CONFIRM' ? '#FFC107' : '#fff' }
+                    ]}
+                    onPress={() => setSelectedCategory('AWAITING_CONFIRM')}
+                >
+                    <Text style={[styles.categoryText, { color: selectedCategory === 'AWAITING_CONFIRM' ? '#fff' : '#FFC107' }]}>
+                        Chờ duyệt ({counts.AWAITING_CONFIRM})
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[
+                        styles.categoryBtn, 
+                        { borderColor: '#F44336', backgroundColor: selectedCategory === 'CANCELED' ? '#F44336' : '#fff' }
+                    ]}
+                    onPress={() => setSelectedCategory('CANCELED')}
+                >
+                    <Text style={[styles.categoryText, { color: selectedCategory === 'CANCELED' ? '#fff' : '#F44336' }]}>
+                        Đã hủy ({counts.CANCELED})
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
             {loading && !refreshing ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={Colors.primary} />
                 </View>
             ) : (
                 <FlatList
-                    data={bookings}
+                    data={filteredBookings}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
                     contentContainerStyle={styles.listContent}
@@ -107,7 +171,7 @@ export default function MyBookingsScreen() {
                     }
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>No bookings found</Text>
+                            <Text style={styles.emptyText}>No bookings found in this category</Text>
                         </View>
                     }
                 />
@@ -204,5 +268,28 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 16,
         color: '#999',
-    }
+    },
+    categoryContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+        gap: 10,
+    },
+    categoryBtn: {
+        flex: 1,
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+        borderRadius: 20,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+    },
+    categoryText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
 });

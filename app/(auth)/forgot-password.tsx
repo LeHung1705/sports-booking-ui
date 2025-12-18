@@ -23,7 +23,7 @@ export default function ForgotPasswordScreen() {
 
   const handleForgotPassword = async () => {
     if (!email) {
-      Alert.alert("Lỗi", "Vui lòng nhập email");
+      Alert.alert("Error", "Please enter your email");
       return;
     }
 
@@ -33,18 +33,18 @@ export default function ForgotPasswordScreen() {
       const response = await authApi.forgotPassword({ email });
 
       Alert.alert(
-        "Thành công",
-        "Link đặt lại mật khẩu đã được gửi đến email của bạn.",
+        "Success",
+        "Password reset link has been sent to your email.",
         [{ text: "OK", onPress: () => router.back() }]
       );
     } catch (error: any) {
       console.error("❌ Forgot password failed:", error);
       if (error.response) {
-        Alert.alert("Lỗi", error.response.data.message || "Không thể gửi email");
+        Alert.alert("Error", error.response.data.message || "Could not send email");
       } else if (error.request) {
-        Alert.alert("Lỗi", "Không thể kết nối tới server");
+        Alert.alert("Error", "Could not connect to server");
       } else {
-        Alert.alert("Lỗi", error.message);
+        Alert.alert("Error", error.message);
       }
     } finally {
       setLoading(false);
@@ -70,9 +70,9 @@ export default function ForgotPasswordScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Quên mật khẩu?</Text>
+          <Text style={styles.title}>Forgot Password?</Text>
           <Text style={styles.subtitle}>
-            Nhập email của bạn để nhận link đặt lại mật khẩu.
+            Enter your email to receive a password reset link.
           </Text>
         </View>
 
@@ -97,7 +97,7 @@ export default function ForgotPasswordScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Gửi Link Đặt Lại</Text>
+              <Text style={styles.buttonText}>Send Reset Link</Text>
             )}
           </TouchableOpacity>
 
@@ -106,7 +106,7 @@ export default function ForgotPasswordScreen() {
             onPress={() => router.back()}
             disabled={loading}
           >
-            <Text style={styles.backText}>← Quay lại đăng nhập</Text>
+            <Text style={styles.backText}>← Back to Login</Text>
           </TouchableOpacity> */}
         </View>
       </ScrollView>

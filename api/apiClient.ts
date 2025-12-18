@@ -5,7 +5,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 // Windows: ipconfig → IPv4 Address
 // Mac: ifconfig getifaddr en0
 
-const API_BASE_URL = "http://192.168.0.202:8080/api/v1";
+const API_BASE_URL = "http://10.0.219.121:8080/api/v1";
 
 
 const apiClient = axios.create({

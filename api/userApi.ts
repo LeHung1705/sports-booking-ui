@@ -15,6 +15,7 @@ export const userApi = {
       phone: raw.phone,
       avatar: raw.avatar ?? raw.avatarUrl,
       role: raw.role, // "ROLE_USER" | "ROLE_OWNER" | "ROLE_ADMIN"
+      stats: raw.stats,
     };
 
     return user;

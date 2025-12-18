@@ -27,7 +27,8 @@ export default function PaymentScreen() {
   
   // Generate VietQR URL
   // Format: https://img.vietqr.io/image/<BANK_BIN>-<ACCOUNT_NO>-<TEMPLATE>.png?amount=<AMOUNT>&addInfo=<CONTENT>&accountName=<NAME>
-  const qrUrl = `https://img.vietqr.io/image/${bankBin}-${bankAccount}-compact.png?amount=${totalAmount}&addInfo=BOOKING ${bookingId}`;
+  const transferContent = `${bookingId} da chuyen khoan thanh cong`;
+  const qrUrl = `https://img.vietqr.io/image/${bankBin}-${bankAccount}-compact.png?amount=${totalAmount}&addInfo=${encodeURIComponent(transferContent)}`;
 
   const handleConfirmPayment = async () => {
     if (!bookingId) return;
@@ -80,7 +81,7 @@ export default function PaymentScreen() {
             Scan the QR code with your banking app to pay.
           </Text>
           <Text style={styles.note}>
-            Transfer Content: <Text style={{fontWeight: 'bold'}}>BOOKING {bookingId?.slice(0, 8)}...</Text>
+            Transfer Content: <Text style={{fontWeight: 'bold', fontSize: 11}}>{transferContent}</Text>
           </Text>
 
            {/* Owner Bank Info Details (Fallback text) */}
@@ -88,33 +89,6 @@ export default function PaymentScreen() {
             <Text style={styles.bankInfoTitle}>Bank Transfer Details:</Text>
             <Text style={styles.bankInfoText}>Bank: {bankName}</Text>
             <Text style={styles.bankInfoText}>Account: {bankAccount}</Text>
-          </View>
-
-
-          <View style={styles.refundSection}>
-            <Text style={styles.sectionHeader}>Refund Information (Optional)</Text>
-            <Text style={styles.subText}>Provide your bank details for quick refund in case of cancellation.</Text>
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Your Bank Name (e.g., MBBank)"
-              value={refundBankName}
-              onChangeText={setRefundBankName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Your Account Number"
-              value={refundAccountNumber}
-              onChangeText={setRefundAccountNumber}
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Your Account Name (e.g., NGUYEN VAN A)"
-              value={refundAccountName}
-              onChangeText={setRefundAccountName}
-              autoCapitalize="characters"
-            />
           </View>
 
         </ScrollView>

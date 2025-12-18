@@ -15,13 +15,13 @@ export default function ProfileHeader({ fullName, email, avatar, role }: Profile
   const safeName =
     (fullName && fullName.trim().length > 0)
       ? fullName.trim()
-      : (email && email.split('@')[0]) || 'User';
+      : (email && email.split('@')[0]) || 'Người dùng';
 
   const initial = safeName.charAt(0).toUpperCase();
 
   const upperRole = (role || '').toUpperCase();
   const roleBadge = upperRole.includes('ADMIN')
-    ? { label: 'ADMINISTRATOR', color: '#FF3B30' }
+    ? { label: 'QUẢN TRỊ VIÊN', color: '#FF3B30' }
     : upperRole.includes('OWNER')
       ? { label: 'CHỦ SÂN', color: '#5856D6' }
       : undefined;
