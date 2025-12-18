@@ -1,3 +1,4 @@
+import CustomHeader from '@/components/ui/CustomHeader';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -7,7 +8,9 @@ import {
   Alert,
   FlatList,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -18,7 +21,6 @@ import {
 import apiClient from '../../api/apiClient';
 import { courtApi, CourtCreateRequest } from '../../api/courtApi';
 import { Colors } from '../../constants/Colors';
-import CustomHeader from '@/components/ui/CustomHeader';
 
 const sportOptions = [
   { key: 'tennis', label: 'Tennis', icon: 'tennisball-outline' },
@@ -147,10 +149,15 @@ export default function AddCourtScreen() {
   return (
     <View style={styles.container}>
       <CustomHeader title="Add Court" showBackButton />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.card}>
-        
-        {/* --- Ô CHỌN VENUE (LOGIC MỚI) --- */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.card}>
+            
+            {/* --- Ô CHỌN VENUE (LOGIC MỚI) --- */}
         <Text style={styles.label}>Select Venue</Text>
         <TouchableOpacity 
             style={[styles.input, styles.dropdownInput]} 
@@ -215,7 +222,7 @@ export default function AddCourtScreen() {
         <Text style={[styles.label, { marginTop: 18 }]}>Base Hourly Price</Text>
         <View style={styles.priceRow}>
           <View style={styles.priceInputWrapper}>
-            <Ionicons name="logo-usd" size={16} color="#A0A6B4" style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 16, color: "#A0A6B4", marginRight: 6 }}>VND</Text>
             <TextInput
               style={styles.priceInput}
               placeholder="0"
@@ -299,7 +306,8 @@ export default function AddCourtScreen() {
         {/* ------------------------- */}
 
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
