@@ -12,6 +12,7 @@ import * as Location from 'expo-location';
 import DateTimePicker from '@react-native-community/datetimepicker'; 
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
+import CustomHeader from '@/components/ui/CustomHeader';
 
 // ⬇️ CHANGED: dùng apiClient chung thay vì axios + tự gắn token
 import apiClient from '../../api/apiClient';
@@ -22,6 +23,8 @@ const CreateVenueScreen = () => {
   // State Form
   const [name, setName] = useState<string>('');
   const [address, setAddress] = useState<string>('');
+  const [city, setCity] = useState<string>('');
+  const [district, setDistrict] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -48,24 +51,58 @@ const CreateVenueScreen = () => {
 
   // --- HANDLERS ---
 
-  const getCurrentLocation = async () => {
+  // Geocode theo địa chỉ người dùng nhập (không dùng GPS thiết bị)
+  const geocodeAddress = async () => {
+    const query = [address, district, city].filter(Boolean).join(', ');
+    if (!query.trim()) {
+      Alert.alert('Thiếu địa chỉ', 'Nhập địa chỉ + quận/huyện + thành phố trước khi lấy tọa độ.');
+      return;
+    }
+
     setIsLoadingLocation(true);
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      // Một số thiết bị yêu cầu quyền; xin quyền để tránh lỗi
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Allow access to location to get coordinates.');
-        setIsLoadingLocation(false);
+        Alert.alert('Cần quyền', 'Cho phép quyền vị trí để geocode địa chỉ.');
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({});
-      setLatitude(location.coords.latitude.toString());
-      setLongitude(location.coords.longitude.toString());
+      const results = await Location.geocodeAsync(query);
+      if (!results.length) {
+        Alert.alert('Không tìm thấy', 'Không tìm được tọa độ cho địa chỉ này.');
+        return;
+      }
+
+      const { latitude: latValue, longitude: lngValue } = results[0];
+      setLatitude(latValue.toString());
+      setLongitude(lngValue.toString());
+      Alert.alert('Đã lấy tọa độ', `Lat: ${latValue.toFixed(6)}\nLng: ${lngValue.toFixed(6)}`);
     } catch (error) {
-      Alert.alert('Error', 'Could not fetch location.');
+      console.error('Geocode failed', error);
+      Alert.alert('Lỗi', 'Không thể lấy tọa độ. Thử lại sau.');
     } finally {
       setIsLoadingLocation(false);
     }
+  };
+
+  // Reset tọa độ khi người dùng đổi địa chỉ
+  const handleAddressChange = (val: string) => {
+    setAddress(val);
+    setLatitude('');
+    setLongitude('');
+  };
+
+  const handleCityChange = (val: string) => {
+    setCity(val);
+    setLatitude('');
+    setLongitude('');
+  };
+
+  const handleDistrictChange = (val: string) => {
+    setDistrict(val);
+    setLatitude('');
+    setLongitude('');
   };
 
   const onChangeTime = (event: any, selectedDate?: Date) => {
@@ -112,6 +149,12 @@ const CreateVenueScreen = () => {
       return;
     }
 
+    // City/District optional? Bạn muốn lưu dữ liệu nhập, nên vẫn cho phép trống nhưng khuyến cáo
+    if (!city || !district) {
+      Alert.alert("Thiếu thông tin", "Vui lòng nhập City và District để lưu chính xác.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -119,8 +162,8 @@ const CreateVenueScreen = () => {
       const payload = {
         name,
         address,
-        district: "Thủ Đức", // tạm hard-code
-        city: "Hồ Chí Minh",
+        district,
+        city,
         phone,
         description,
         imageUrl: images.length > 0 ? images[0] : "", 
@@ -188,15 +231,10 @@ const CreateVenueScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Venue</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
+      <CustomHeader
+        title="Create Venue"
+        showBackButton
+      />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
@@ -223,9 +261,32 @@ const CreateVenueScreen = () => {
               style={[styles.input, { flex: 1, marginBottom: 0 }]} 
               placeholder="Street, City, Zip" 
               placeholderTextColor="#9CA3AF"
-              value={address} onChangeText={setAddress}
+              value={address} onChangeText={handleAddressChange}
             />
             <Ionicons name="location-sharp" size={20} color="#9CA3AF" style={styles.inputIcon} />
+          </View>
+        </View>
+
+        <View style={{flexDirection: 'row', gap: 12, marginBottom: 18}}>
+          <View style={{flex: 1}}>
+            <Text style={styles.label}>City</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., Ho Chi Minh"
+              placeholderTextColor="#9CA3AF"
+              value={city}
+              onChangeText={handleCityChange}
+            />
+          </View>
+          <View style={{flex: 1}}>
+            <Text style={styles.label}>District</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., Thu Duc"
+              placeholderTextColor="#9CA3AF"
+              value={district}
+              onChangeText={handleDistrictChange}
+            />
           </View>
         </View>
 
@@ -233,10 +294,10 @@ const CreateVenueScreen = () => {
         <View style={styles.inputGroup}>
           <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8}}>
             <Text style={styles.label}>Location Coordinates</Text>
-            <TouchableOpacity onPress={getCurrentLocation} disabled={isLoadingLocation} style={{flexDirection: 'row', alignItems: 'center'}}>
+            <TouchableOpacity onPress={geocodeAddress} disabled={isLoadingLocation} style={{flexDirection: 'row', alignItems: 'center'}}>
                <Ionicons name="locate" size={16} color={isLoadingLocation ? '#9CA3AF' : '#10B981'} />
                <Text style={{color: isLoadingLocation ? '#9CA3AF' : '#10B981', fontSize: 13, fontWeight: '600', marginLeft: 4}}>
-                 {isLoadingLocation ? 'Locating...' : 'Get GPS'}
+                 {isLoadingLocation ? 'Geocoding...' : 'Lấy GPS từ địa chỉ'}
                </Text>
             </TouchableOpacity>
           </View>
@@ -257,6 +318,7 @@ const CreateVenueScreen = () => {
               value={longitude} onChangeText={setLongitude}
             />
           </View>
+          <Text style={styles.helperText}>Nhập địa chỉ/quận/thành phố rồi bấm “Lấy GPS từ địa chỉ” để geocode.</Text>
         </View>
 
         <View style={styles.inputGroup}>
@@ -662,7 +724,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalCard: {
-    backgroundColor: '#16A34A',
+    backgroundColor: '#5d806aff',
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',

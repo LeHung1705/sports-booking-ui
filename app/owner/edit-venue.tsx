@@ -1,262 +1,610 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Image
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { venueApi } from '../../api/venueApi';
-import CustomHeader from '../../components/ui/CustomHeader';
-import { Colors } from '../../constants/Colors';
-import * as ImagePicker from 'expo-image-picker';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { Colors } from "../../constants/Colors";
+import { venueApi } from "../../api/venueApi";
+import type { VenueDetail, VenueListItem, VenueUpdateRequest } from "../../types/venue";
+import CustomHeader from "@/components/ui/CustomHeader";
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 
 export default function EditVenueScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [loading, setLoading] = useState(true);
+
+  const [venueOptions, setVenueOptions] = useState<VenueListItem[]>([]);
+  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
+  const [venueDetail, setVenueDetail] = useState<VenueDetail | null>(null);
+
+  const [loadingList, setLoadingList] = useState(true);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Form State
-  const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
-  const [description, setDescription] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  
-  // Bank Info State
-  const [bankBin, setBankBin] = useState('');
-  const [bankName, setBankName] = useState('');
-  const [bankAccountNumber, setBankAccountNumber] = useState('');
-  const [bankAccountName, setBankAccountName] = useState('');
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [district, setDistrict] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const placeholderImage = "https://via.placeholder.com/800x400.png?text=Venue+Image";
 
+  // 1. Load danh sách sân của Owner
   useEffect(() => {
-    if (id) {
-      loadVenueDetail();
-    }
-  }, [id]);
+    const loadMyVenues = async () => {
+      try {
+        setLoadingList(true);
+        // Gọi API lấy danh sách sân của tôi
+        const data = await venueApi.listMyVenues(); 
+        setVenueOptions(data);
 
-  const loadVenueDetail = async () => {
-    try {
-      setLoading(true);
-      const data = await venueApi.getVenueDetail(id!);
-      setName(data.name);
-      setAddress(data.address);
-      setPhone(data.phone || '');
-      setDescription(data.description || '');
-      setImageUrl(data.imageUrl || '');
-      
-      setBankBin(data.bankBin || '');
-      setBankName(data.bankName || '');
-      setBankAccountNumber(data.bankAccountNumber || '');
-      setBankAccountName(data.bankAccountName || '');
-      
-    } catch (error) {
-      Alert.alert('Error', 'Failed to load venue details');
-      router.back();
-    } finally {
-      setLoading(false);
-    }
-  };
+        // Tự động chọn sân đầu tiên nếu có
+        if (data.length > 0) {
+          setSelectedVenueId(data[0].id);
+        } else {
+          setSelectedVenueId(null);
+          setVenueDetail(null);
+        }
+      } catch (error) {
+        console.error("Failed to load venues", error);
+        Alert.alert("Lỗi", "Không tải được danh sách sân của bạn.");
+      } finally {
+        setLoadingList(false);
+      }
+    };
 
+    loadMyVenues();
+  }, []);
+
+  // 2. Load chi tiết khi chọn ID
+  useEffect(() => {
+    const loadDetail = async (id: string) => {
+      try {
+        setLoadingDetail(true);
+        const detail = await venueApi.getVenueDetail(id);
+        setVenueDetail(detail);
+        
+        // Fill data vào form
+        setName(detail.name || "");
+        setPhone(detail.phone || "");
+        setAddress(detail.address || "");
+        setCity(detail.city || "");
+        setDistrict(detail.district || "");
+        setDescription(detail.description || "");
+        setImageUrl(detail.imageUrl || "");
+        setLatitude(detail.lat ?? null);
+        setLongitude(detail.lng ?? null);
+      } catch (error) {
+        console.error("Failed to load venue detail", error);
+        Alert.alert("Lỗi", "Không tải được thông tin sân.");
+      } finally {
+        setLoadingDetail(false);
+      }
+    };
+
+    if (selectedVenueId) {
+      loadDetail(selectedVenueId);
+    }
+  }, [selectedVenueId]);
+
+  // 3. Hàm Save (ĐÃ SỬA: Gọi API thật)
   const handleSave = async () => {
-    if (!name || !address) {
-      Alert.alert('Error', 'Name and Address are required');
+    if (!selectedVenueId) {
+      Alert.alert("Lỗi", "Vui lòng chọn sân trước khi lưu.");
       return;
     }
 
+    // Chuẩn bị payload gửi lên
+    const payload: VenueUpdateRequest = {
+      name: name?.trim(),
+      phone: phone?.trim(),
+      address: address?.trim(),
+      city: city?.trim(),
+      district: district?.trim(),
+      description: description?.trim(),
+      imageUrl: imageUrl?.trim(),
+      lat: latitude ?? undefined,
+      lng: longitude ?? undefined,
+      // Các trường bank nếu cần thiết thì thêm vào state, hiện tại để trống
+    };
+
     setSaving(true);
     try {
-      await venueApi.updateVenue(id!, {
-        name,
-        address,
-        phone,
-        description,
-        imageUrl,
-        bankBin,
-        bankName,
-        bankAccountNumber,
-        bankAccountName
-      });
-      Alert.alert('Success', 'Venue updated successfully', [
-        { text: 'OK', onPress: () => router.back() }
+      // 👇 GỌI API UPDATE THẬT SỰ
+      await venueApi.updateVenue(selectedVenueId, payload);
+      
+      Alert.alert("Thành công", "Thông tin sân đã được cập nhật!", [
+        { text: "OK" } // Hoặc navigate đi đâu đó nếu muốn
       ]);
-    } catch (error: any) {
-        console.error("Update error:", error);
-        Alert.alert('Error', error.response?.data?.message || 'Failed to update venue');
+      
+      // Refresh lại data mới nhất để đảm bảo đồng bộ
+      const detail = await venueApi.getVenueDetail(selectedVenueId);
+      setVenueDetail(detail);
+
+    } catch (err: any) {
+      console.error("Update venue failed", err);
+      const msg = err?.response?.data?.message || "Không thể lưu thay đổi. Vui lòng thử lại.";
+      Alert.alert("Lỗi Update", msg);
     } finally {
       setSaving(false);
     }
   };
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
+  const currentCourts = useMemo(() => venueDetail?.courts || [], [venueDetail]);
+
+  const handlePickImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Quyền truy cập ảnh", "Hãy cho phép truy cập thư viện ảnh để chọn banner.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.8,
     });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-        // In a real app, you would upload this image to a server/storage and get a URL.
-        // For this prototype, if the backend accepts Base64 or we just use the local URI (which won't work for other users), 
-        // we might need an upload endpoint. 
-        // However, looking at CreateVenueScreen, it sends the URI directly? 
-        // Wait, CreateVenueScreen sends `imageUrl: images[0]`. If it's a local file uri, backend can't see it unless backend uploads it.
-        // Checking VenueCreateRequest: imageUrl is String.
-        // If the backend doesn't handle file upload, this URI is useless for others.
-        // But the user didn't ask to fix image upload. I'll just set the URI for now.
-        // Ideally we need an upload service.
-        setImageUrl(result.assets[0].uri);
+    if (!result.canceled && result.assets?.length) {
+      setImageUrl(result.assets[0].uri);
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
-  }
+  const handleClearImage = () => {
+    setImageUrl("");
+  };
+
+  // Khi đổi địa chỉ/quận/thành phố, xóa tọa độ cũ để người dùng bấm geocode lại.
+  const handleAddressChange = (val: string) => {
+    setAddress(val);
+    setLatitude(null);
+    setLongitude(null);
+  };
+
+  const handleDistrictChange = (val: string) => {
+    setDistrict(val);
+    setLatitude(null);
+    setLongitude(null);
+  };
+
+  const handleCityChange = (val: string) => {
+    setCity(val);
+    setLatitude(null);
+    setLongitude(null);
+  };
+
+  const handleGeocodeAddress = async () => {
+    const query = [address, district, city].filter(Boolean).join(", ");
+    if (!query.trim()) {
+      Alert.alert("Thiếu địa chỉ", "Hãy nhập địa chỉ, quận/huyện và thành phố trước khi lấy GPS.");
+      return;
+    }
+
+    try {
+      setGeocoding(true);
+
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Cần quyền truy cập vị trí", "Hãy cho phép ứng dụng sử dụng dịch vụ vị trí để geocode địa chỉ.");
+        return;
+      }
+
+      const results = await Location.geocodeAsync(query);
+      if (!results.length) {
+        Alert.alert("Không tìm thấy", "Không tìm được tọa độ cho địa chỉ này. Vui lòng kiểm tra lại.");
+        return;
+      }
+
+      const { latitude: latValue, longitude: lngValue } = results[0];
+      setLatitude(latValue);
+      setLongitude(lngValue);
+      Alert.alert("Đã lấy tọa độ", `Lat: ${latValue.toFixed(6)}\nLng: ${lngValue.toFixed(6)}`);
+    } catch (error) {
+      console.error("Geocode address failed", error);
+      Alert.alert("Lỗi", "Không thể lấy tọa độ. Hãy thử lại sau.");
+    } finally {
+      setGeocoding(false);
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      <CustomHeader title="Edit Venue" showBackButton />
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        <ScrollView contentContainerStyle={styles.content}>
-          
-          <Text style={styles.sectionTitle}>General Info</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Venue Name</Text>
-            <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Venue Name" />
-          </View>
+    <View style={styles.screen}>
+      <CustomHeader title="Edit Venue Info" showBackButton onBackPress={() => router.back()} />
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Address</Text>
-            <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Address" />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone</Text>
-            <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Phone Number" keyboardType="phone-pad" />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description</Text>
-            <TextInput 
-                style={[styles.input, styles.textArea]} 
-                value={description} 
-                onChangeText={setDescription} 
-                placeholder="Description" 
-                multiline 
-                numberOfLines={4} 
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Image URL</Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TextInput style={[styles.input, { flex: 1 }]} value={imageUrl} onChangeText={setImageUrl} placeholder="Image URL" />
-                <TouchableOpacity style={styles.pickBtn} onPress={pickImage}>
-                    <Ionicons name="image-outline" size={24} color="#fff" />
-                </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Chọn sân cần chỉnh sửa</Text>
+          {loadingList ? (
+            <View style={styles.centerRow}>
+              <ActivityIndicator color={Colors.primary} />
+              <Text style={styles.muted}>Đang tải danh sách sân...</Text>
             </View>
-            {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.previewImage} /> : null}
-          </View>
-
-          <View style={styles.divider} />
-
-          <Text style={styles.sectionTitle}>Bank Information (For Payments)</Text>
-          <Text style={styles.helperText}>This information will be shown to users when they book.</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Bank Name</Text>
-            <TextInput style={styles.input} value={bankName} onChangeText={setBankName} placeholder="e.g. MB Bank, Vietcombank" />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Bank Bin (ID)</Text>
-            <TextInput style={styles.input} value={bankBin} onChangeText={setBankBin} placeholder="e.g. 970422" keyboardType="numeric" />
-            <Text style={styles.subHelp}>Look up your bank's BIN code for VietQR (e.g. MB: 970422)</Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Account Number</Text>
-            <TextInput style={styles.input} value={bankAccountNumber} onChangeText={setBankAccountNumber} placeholder="Account Number" keyboardType="numeric" />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Account Holder Name</Text>
-            <TextInput style={styles.input} value={bankAccountName} onChangeText={setBankAccountName} placeholder="ACCOUNT HOLDER NAME" autoCapitalize="characters" />
-          </View>
-
-        </ScrollView>
-
-        <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[styles.saveBtn, saving && styles.disabledBtn]} 
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
-          </TouchableOpacity>
+          ) : venueOptions.length === 0 ? (
+            <Text style={styles.muted}>Bạn chưa có sân nào. Hãy tạo sân trước.</Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
+              {venueOptions.map((venue) => {
+                const selected = venue.id === selectedVenueId;
+                return (
+                  <TouchableOpacity
+                    key={venue.id}
+                    style={[styles.venueChip, selected && styles.venueChipSelected]}
+                    onPress={() => setSelectedVenueId(venue.id)}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.venueChipTitle, selected && styles.venueChipTitleActive]} numberOfLines={1}>
+                      {venue.name}
+                    </Text>
+                    <Text style={[styles.venueChipSub, selected && styles.venueChipSubActive]} numberOfLines={1}>
+                      {venue.district || venue.city || "Địa chỉ chưa có"}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
         </View>
-      </KeyboardAvoidingView>
+
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
+          {loadingDetail ? (
+            <View style={styles.centerRow}>
+              <ActivityIndicator color={Colors.primary} />
+              <Text style={styles.muted}>Đang tải chi tiết sân...</Text>
+            </View>
+          ) : (
+            <>
+              <LabeledInput label="Tên sân" value={name} onChangeText={setName} placeholder="Nhập tên sân" />
+              <LabeledInput label="Số điện thoại" value={phone} onChangeText={setPhone} placeholder="Số liên hệ" keyboardType="phone-pad" />
+              <LabeledInput label="Địa chỉ" value={address} onChangeText={handleAddressChange} placeholder="Số nhà, đường" />
+              <View style={styles.inlineRow}>
+                <View style={styles.inlineHalf}>
+                  <LabeledInput label="Quận/Huyện" value={district} onChangeText={handleDistrictChange} placeholder="VD: Quận 1" />
+                </View>
+                <View style={styles.inlineHalf}>
+                  <LabeledInput label="Thành phố" value={city} onChangeText={handleCityChange} placeholder="VD: TP. HCM" />
+                </View>
+              </View>
+              <View style={styles.gpsRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Tọa độ GPS</Text>
+                  <Text style={styles.coordText}>
+                    {latitude != null ? latitude.toFixed(6) : "--"} , {longitude != null ? longitude.toFixed(6) : "--"}
+                  </Text>
+                  <Text style={styles.helperText}>Nhập địa chỉ và bấm "Lấy GPS" để geocode.</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.geoBtn, geocoding && styles.geoBtnDisabled]}
+                  onPress={handleGeocodeAddress}
+                  disabled={geocoding}
+                  activeOpacity={0.9}
+                >
+                  {geocoding ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.geoBtnText}>Lấy GPS</Text>}
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.label}>Ảnh đại diện</Text>
+              <View style={styles.imageRow}>
+                <Image
+                  source={{ uri: imageUrl || placeholderImage }}
+                  style={styles.imagePreview}
+                />
+                <View style={{ flex: 1 }}>
+                  <TouchableOpacity style={styles.pickBtn} onPress={handlePickImage}>
+                    <Text style={styles.pickBtnText}>Chọn ảnh từ thư viện</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.clearBtn} onPress={handleClearImage}>
+                    <Text style={styles.clearBtnText}>Xóa ảnh</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.helperText}>Có thể dán URL hoặc chọn ảnh; nếu chọn ảnh cục bộ, bạn cần upload lên server/CDN để backend đọc được.</Text>
+                  <View style={[styles.inputRowSoft, { marginTop: 8 }]}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="https://..."
+                      placeholderTextColor={Colors.textSecondary}
+                      value={imageUrl}
+                      onChangeText={setImageUrl}
+                      autoCapitalize="none"
+                    />
+                  </View>
+                </View>
+              </View>
+              <LabeledInput
+                label="Mô tả ngắn"
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Điểm mạnh, tiện ích, lưu ý cho khách"
+                multiline
+              />
+            </>
+          )}
+        </View>
+
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Sân con & giá tham khảo</Text>
+          {currentCourts.length === 0 ? (
+            <Text style={styles.muted}>Chưa có sân con nào được khai báo.</Text>
+          ) : (
+            currentCourts.map((court) => (
+              <View key={court.id} style={styles.courtRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.courtName}>{court.name}</Text>
+                  <Text style={styles.courtMeta}>{court.sport || "SPORT"}</Text>
+                </View>
+                <View>
+                  <Text style={styles.priceTag}>{court.pricePerHour?.toLocaleString("vi-VN") || "-"} đ/h</Text>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.saveButton, (saving || loadingDetail) && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={saving || loadingDetail}
+          activeOpacity={0.88}
+        >
+          {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.saveButtonText}>Lưu thay đổi</Text>}
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+}
+
+interface LabeledInputProps {
+  label: string;
+  value: string;
+  onChangeText: (val: string) => void;
+  placeholder?: string;
+  helperText?: string;
+  keyboardType?: "default" | "number-pad" | "decimal-pad" | "numeric" | "email-address" | "phone-pad";
+  multiline?: boolean;
+}
+
+function LabeledInput({ label, value, onChangeText, placeholder, helperText, keyboardType = "default", multiline }: LabeledInputProps) {
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={[styles.inputRowSoft, multiline && styles.inputRowSoftTall]}>
+        <TextInput
+          style={[styles.input, multiline && styles.inputMultiline]}
+          placeholder={placeholder}
+          placeholderTextColor={Colors.textSecondary}
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType}
+          multiline={multiline}
+        />
+      </View>
+      {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  content: { padding: 16, paddingBottom: 100 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 12, marginTop: 8 },
-  helperText: { fontSize: 13, color: '#666', marginBottom: 16 },
-  inputGroup: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 6 },
-  input: {
-    backgroundColor: '#fff',
+  screen: {
+    flex: 1,
+    backgroundColor: "#F7F9FC",
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+    paddingTop: 10,
+  },
+  sectionCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
+    borderColor: Colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  textArea: { height: 100, textAlignVertical: 'top' },
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 20 },
-  footer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
+  imageRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 14,
   },
-  saveBtn: {
-    backgroundColor: Colors.primary,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
+  imagePreview: {
+    width: 110,
+    height: 80,
+    borderRadius: 10,
+    backgroundColor: "#E2E8F0",
   },
-  disabledBtn: { opacity: 0.7 },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   pickBtn: {
-      backgroundColor: Colors.primary,
-      width: 50,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 8
+    backgroundColor: Colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
   },
-  previewImage: {
-      width: '100%',
-      height: 200,
-      marginTop: 10,
-      borderRadius: 8,
-      resizeMode: 'cover'
+  pickBtnText: {
+    color: "white",
+    fontWeight: "700",
+    textAlign: "center",
   },
-  subHelp: {
-      fontSize: 12,
-      color: '#888',
-      marginTop: 4
-  }
+  clearBtn: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: "#E2E8F0",
+    alignSelf: "flex-start",
+  },
+  clearBtnText: {
+    color: "#475569",
+    fontWeight: "600",
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  centerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  muted: {
+    color: Colors.textSecondary,
+    marginTop: 6,
+  },
+  chipsRow: {
+    flexGrow: 0,
+  },
+  venueChip: {
+    width: 200,
+    backgroundColor: "#f1f5f9",
+    borderRadius: 12,
+    padding: 12,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  venueChipSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  venueChipTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  venueChipTitleActive: {
+    color: Colors.white,
+  },
+  venueChipSub: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 4,
+  },
+  venueChipSubActive: {
+    color: "#d8f3e7",
+  },
+  inputGroup: {
+    marginBottom: 14,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  inputRowSoft: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  inputRowSoftTall: {
+    alignItems: "flex-start",
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text,
+  },
+  inputMultiline: {
+    minHeight: 90,
+    textAlignVertical: "top",
+  },
+  helperText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  inlineRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  inlineHalf: {
+    flex: 1,
+  },
+  gpsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 14,
+  },
+  coordText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  geoBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    minWidth: 110,
+    alignItems: "center",
+  },
+  geoBtnDisabled: {
+    opacity: 0.7,
+  },
+  geoBtnText: {
+    color: Colors.white,
+    fontWeight: "800",
+  },
+  courtRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  courtName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  courtMeta: {
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  priceTag: {
+    fontWeight: "800",
+    color: Colors.primary,
+  },
+  saveButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 6,
+    elevation: 3,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
+  },
+  saveButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: "800",
+  },
 });

@@ -56,8 +56,26 @@ export interface VenueDetail {
   bankAccountNumber?: string | null;
   bankAccountName?: string | null;
 
+  lat?: number;
+  lng?: number;
   courts: VenueDetailCourtItem[];
   pricingConfig?: PricingRule[];
+}
+
+export interface VenueUpdateRequest {
+  name?: string;
+  address?: string;
+  district?: string;
+  city?: string;
+  phone?: string;
+  description?: string;
+  lat?: number;
+  lng?: number;
+  imageUrl?: string;
+  bankBin?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountName?: string;
 }
 
 export type VenueListResponse = VenueListItem[];
