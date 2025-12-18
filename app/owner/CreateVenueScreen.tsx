@@ -51,24 +51,58 @@ const CreateVenueScreen = () => {
 
   // --- HANDLERS ---
 
-  const getCurrentLocation = async () => {
+  // Geocode theo địa chỉ người dùng nhập (không dùng GPS thiết bị)
+  const geocodeAddress = async () => {
+    const query = [address, district, city].filter(Boolean).join(', ');
+    if (!query.trim()) {
+      Alert.alert('Thiếu địa chỉ', 'Nhập địa chỉ + quận/huyện + thành phố trước khi lấy tọa độ.');
+      return;
+    }
+
     setIsLoadingLocation(true);
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      // Một số thiết bị yêu cầu quyền; xin quyền để tránh lỗi
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Allow access to location to get coordinates.');
-        setIsLoadingLocation(false);
+        Alert.alert('Cần quyền', 'Cho phép quyền vị trí để geocode địa chỉ.');
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({});
-      setLatitude(location.coords.latitude.toString());
-      setLongitude(location.coords.longitude.toString());
+      const results = await Location.geocodeAsync(query);
+      if (!results.length) {
+        Alert.alert('Không tìm thấy', 'Không tìm được tọa độ cho địa chỉ này.');
+        return;
+      }
+
+      const { latitude: latValue, longitude: lngValue } = results[0];
+      setLatitude(latValue.toString());
+      setLongitude(lngValue.toString());
+      Alert.alert('Đã lấy tọa độ', `Lat: ${latValue.toFixed(6)}\nLng: ${lngValue.toFixed(6)}`);
     } catch (error) {
-      Alert.alert('Error', 'Could not fetch location.');
+      console.error('Geocode failed', error);
+      Alert.alert('Lỗi', 'Không thể lấy tọa độ. Thử lại sau.');
     } finally {
       setIsLoadingLocation(false);
     }
+  };
+
+  // Reset tọa độ khi người dùng đổi địa chỉ
+  const handleAddressChange = (val: string) => {
+    setAddress(val);
+    setLatitude('');
+    setLongitude('');
+  };
+
+  const handleCityChange = (val: string) => {
+    setCity(val);
+    setLatitude('');
+    setLongitude('');
+  };
+
+  const handleDistrictChange = (val: string) => {
+    setDistrict(val);
+    setLatitude('');
+    setLongitude('');
   };
 
   const onChangeTime = (event: any, selectedDate?: Date) => {
@@ -227,7 +261,7 @@ const CreateVenueScreen = () => {
               style={[styles.input, { flex: 1, marginBottom: 0 }]} 
               placeholder="Street, City, Zip" 
               placeholderTextColor="#9CA3AF"
-              value={address} onChangeText={setAddress}
+              value={address} onChangeText={handleAddressChange}
             />
             <Ionicons name="location-sharp" size={20} color="#9CA3AF" style={styles.inputIcon} />
           </View>
@@ -241,7 +275,7 @@ const CreateVenueScreen = () => {
               placeholder="e.g., Ho Chi Minh"
               placeholderTextColor="#9CA3AF"
               value={city}
-              onChangeText={setCity}
+              onChangeText={handleCityChange}
             />
           </View>
           <View style={{flex: 1}}>
@@ -251,7 +285,7 @@ const CreateVenueScreen = () => {
               placeholder="e.g., Thu Duc"
               placeholderTextColor="#9CA3AF"
               value={district}
-              onChangeText={setDistrict}
+              onChangeText={handleDistrictChange}
             />
           </View>
         </View>
@@ -260,10 +294,10 @@ const CreateVenueScreen = () => {
         <View style={styles.inputGroup}>
           <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8}}>
             <Text style={styles.label}>Location Coordinates</Text>
-            <TouchableOpacity onPress={getCurrentLocation} disabled={isLoadingLocation} style={{flexDirection: 'row', alignItems: 'center'}}>
+            <TouchableOpacity onPress={geocodeAddress} disabled={isLoadingLocation} style={{flexDirection: 'row', alignItems: 'center'}}>
                <Ionicons name="locate" size={16} color={isLoadingLocation ? '#9CA3AF' : '#10B981'} />
                <Text style={{color: isLoadingLocation ? '#9CA3AF' : '#10B981', fontSize: 13, fontWeight: '600', marginLeft: 4}}>
-                 {isLoadingLocation ? 'Locating...' : 'Get GPS'}
+                 {isLoadingLocation ? 'Geocoding...' : 'Lấy GPS từ địa chỉ'}
                </Text>
             </TouchableOpacity>
           </View>
@@ -284,6 +318,7 @@ const CreateVenueScreen = () => {
               value={longitude} onChangeText={setLongitude}
             />
           </View>
+          <Text style={styles.helperText}>Nhập địa chỉ/quận/thành phố rồi bấm “Lấy GPS từ địa chỉ” để geocode.</Text>
         </View>
 
         <View style={styles.inputGroup}>

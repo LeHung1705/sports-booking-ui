@@ -16,6 +16,7 @@ import { adminApi } from '../../api/adminApi';
 import { authApi } from '../../api/authApi';
 import { bookingApi } from '../../api/bookingApi';
 import { userApi } from '../../api/userApi';
+import { venueApi } from '../../api/venueApi';
 import { Colors } from '../../constants/Colors';
 import { User } from '../../types/User';
 import { BookingListResponse } from "../../types/booking";
@@ -33,6 +34,7 @@ export default function ProfileScreen() {
   // Owner specific state
   const [pendingBookings, setPendingBookings] = useState<BookingListResponse[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [ownerFirstVenueId, setOwnerFirstVenueId] = useState<string | null>(null);
 
   // Admin specific state
   const [adminStats, setAdminStats] = useState<{ users: number; venues: number; pendingVenues: number } | null>(null);
@@ -71,6 +73,20 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (user?.role === 'ROLE_OWNER') {
       fetchPendingBookings();
+      // Lấy venue đầu tiên của owner để mở chi tiết
+      venueApi
+        .listMyVenues()
+        .then((list) => {
+          if (Array.isArray(list) && list.length > 0) {
+            setOwnerFirstVenueId(list[0].id);
+          } else {
+            setOwnerFirstVenueId(null);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load owner venues', err);
+          setOwnerFirstVenueId(null);
+        });
     }
     if (user?.role === 'ROLE_ADMIN') {
       fetchAdminStats();
@@ -101,6 +117,27 @@ export default function ProfileScreen() {
       console.error("Failed to fetch admin stats", error);
     }
   };
+
+  const handleOpenVenueDetail = useCallback(async () => {
+    if (ownerFirstVenueId) {
+      router.push({ pathname: '/owner/VenueDetailScreen', params: { venueId: ownerFirstVenueId } });
+      return;
+    }
+
+    try {
+      const list = await venueApi.listMyVenues();
+      if (Array.isArray(list) && list.length > 0) {
+        const firstId = list[0].id;
+        setOwnerFirstVenueId(firstId);
+        router.push({ pathname: '/owner/VenueDetailScreen', params: { venueId: firstId } });
+      } else {
+        Alert.alert('Chưa có Venue', 'Bạn chưa có sân hoặc chưa lấy được danh sách sân.');
+      }
+    } catch (error) {
+      console.error('Failed to load owner venues', error);
+      Alert.alert('Chưa có Venue', 'Bạn chưa có sân hoặc chưa lấy được danh sách sân.');
+    }
+  }, [ownerFirstVenueId, router]);
 
   const handleConfirmBooking = async (bookingId: string) => {
     setProcessingId(bookingId);
@@ -193,17 +230,12 @@ export default function ProfileScreen() {
                 <MenuOption
                   icon="person-outline"
                   title="Edit Profile"
-                  onPress={() => router.push('./profile/edit')}
-                />
-                <MenuOption
-                  icon="card-outline"
-                  title="Payment Methods"
-                  onPress={() => Alert.alert('Coming Soon', 'Payment methods feature will be available soon')}
+                  onPress={() => router.push('/profile/edit')}
                 />
                 <MenuOption
                   icon="lock-closed-outline"
                   title="Change Password"
-                  onPress={() => router.push('./index')}
+                  onPress={() => router.push('/profile/change-password')}
                   showBorder={false}
                 />
               </View>
@@ -216,11 +248,6 @@ export default function ProfileScreen() {
                   icon="time-outline"
                   title="Booking History"
                   onPress={() => Alert.alert('Coming Soon', 'Booking history feature will be available soon')}
-                />
-                <MenuOption
-                  icon="heart-outline"
-                  title="My Favorites"
-                  onPress={() => Alert.alert('Coming Soon', 'Favorites feature will be available soon')}
                   showBorder={false}
                 />
               </View>
@@ -269,7 +296,7 @@ export default function ProfileScreen() {
               <MenuOption
                 icon="business-outline"
                 title="My Venue Details"
-                onPress={() => console.log('Navigate to Venue Detail')}
+                onPress={handleOpenVenueDetail}
               />
               <MenuOption
                 icon="add-circle-outline"
@@ -279,7 +306,7 @@ export default function ProfileScreen() {
               <MenuOption
                 icon="create-outline"
                 title="Edit Venue Info"
-                onPress={() => console.log('Navigate to Edit Venue')}
+                onPress={() => router.push('/owner/edit-venue')}
                 showBorder={false}
               />
             </View>
@@ -291,7 +318,7 @@ export default function ProfileScreen() {
               <MenuOption
                 icon="grid-outline"
                 title="Court List"
-                onPress={() => console.log('Navigate to Court List')}
+                onPress={() => router.push('/owner/court-list')}
               />
               <MenuOption
                 icon="add-outline"

@@ -8,6 +8,11 @@ export interface CourtCreateRequest {
   imageUrl?: string | null;
 }
 export const courtApi = {
+  async getCourts(venueId: string): Promise<CourtDetail[]> {
+    const res = await apiClient.get<CourtDetail[]>(`/venues/${venueId}/courts`);
+    return res.data;
+  },
+
   async getCourtDetail(venueId: string, courtId: string): Promise<CourtDetail> {
     const res = await apiClient.get<CourtDetail>(`/venues/${venueId}/courts/${courtId}`);
     return res.data;
