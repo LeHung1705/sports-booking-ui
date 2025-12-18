@@ -21,4 +21,7 @@ export const authApi = {
 
   logout: () =>
     apiClient.post("/auth/logout"),
+  // ✅ [BỔ SUNG HÀM NÀY]
+  changePassword: (data: { email: string; currentPassword: string; newPassword: string }) =>
+    apiClient.post("/auth/change-password", data),
 };

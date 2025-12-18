@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { userApi } from '../../api/userApi';
 import { User } from '../../types/User';
+import CustomHeader from '@/components/ui/CustomHeader';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -96,13 +97,7 @@ export default function EditProfileScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={22} color={Colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
-          <View style={{ width: 22 }} />
-        </View>
+        <CustomHeader title="Edit Profile" showBackButton />
 
         {initialLoading ? (
           <View style={styles.loader}>

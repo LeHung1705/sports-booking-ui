@@ -9,6 +9,8 @@ interface CustomHeaderProps {
   showBackButton?: boolean;
   onBackPress?: () => void;
   rightIcon?: React.ReactNode;
+  rightText?: string;
+  onRightPress?: () => void;
   children?: React.ReactNode;
 }
 
@@ -17,6 +19,8 @@ const CustomHeader: React.FC<CustomHeaderProps> = ({
   showBackButton = false,
   onBackPress,
   rightIcon,
+  rightText,
+  onRightPress,
   children,
 }) => {
   const router = useRouter();
@@ -55,6 +59,11 @@ const CustomHeader: React.FC<CustomHeaderProps> = ({
         {/* Right Section (Optional Icon) */}
         <View style={styles.rightContainer}>
           {rightIcon}
+          {!rightIcon && rightText ? (
+            <TouchableOpacity onPress={onRightPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.rightText}>{rightText}</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
     </SafeAreaView>
@@ -105,6 +114,11 @@ const styles = StyleSheet.create({
     width: 40,
     alignItems: 'flex-end',
     justifyContent: 'center',
+  },
+  rightText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
   },
 });
 
