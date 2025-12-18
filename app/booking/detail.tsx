@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, Modal, TextInput, FlatList } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { bookingApi } from '../../api/bookingApi';
-import { BookingDetailResponse } from '../../types/booking';
-import { Colors } from '../../constants/Colors';
 import CustomHeader from '@/components/ui/CustomHeader';
+import PolicyModal from '@/components/ui/PolicyModal';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { bookingApi } from '../../api/bookingApi';
+import { Colors } from '../../constants/Colors';
+import { BookingDetailResponse } from '../../types/booking';
 
 const VIETNAM_BANKS = [
     "Vietcombank", "BIDV", "VietinBank", "Agribank", "Techcombank", "VPBank", "MB Bank", "ACB", 
@@ -18,6 +19,9 @@ export default function BookingDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [canceling, setCanceling] = useState(false);
     
+    // Policy Modal State
+    const [showPolicy, setShowPolicy] = useState(false);
+
     // Cancel Modal State
     const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
     const [bankName, setBankName] = useState('');
@@ -54,6 +58,18 @@ export default function BookingDetailScreen() {
             Alert.alert('Cannot Cancel', 'This booking has already started or passed.');
             return;
         }
+
+        // Show Policy First
+        setShowPolicy(true);
+    };
+
+    const onPolicyConfirm = () => {
+        setShowPolicy(false);
+        if (!booking) return;
+
+        const startTime = new Date(booking.startTime);
+        const now = new Date();
+        const hoursUntilStart = (startTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
         let message = "";
         if (hoursUntilStart > 6) {
@@ -214,6 +230,38 @@ export default function BookingDetailScreen() {
 
             </ScrollView>
 
+            {/* Policy Modal */}
+            <PolicyModal
+                visible={showPolicy}
+                title="CHÍNH SÁCH HỦY & HOÀN TIỀN"
+                onConfirm={onPolicyConfirm}
+                onCancel={() => setShowPolicy(false)}
+                confirmText="Tôi đã hiểu và muốn Hủy"
+            >
+                 <Text style={styles.policyHeader}>1. Chính sách Hủy sân & Hoàn tiền</Text>
+                 <Text style={styles.policyText}>
+                   Số tiền được hoàn lại phụ thuộc vào thời điểm bạn yêu cầu hủy so với giờ bắt đầu:{"\n"}
+                   • <Text style={styles.bold}>Hủy sớm (Trước {">"} 6 tiếng):</Text> Hoàn lại <Text style={styles.bold}>100%</Text> số tiền đã thanh toán.{"\n"}
+                   • <Text style={styles.bold}>Hủy cận giờ (Từ 2 - 6 tiếng):</Text> Hoàn lại <Text style={styles.bold}>50%</Text> số tiền đã thanh toán.{"\n"}
+                   • <Text style={styles.bold}>Hủy gấp ({"<"} 2 tiếng):</Text> <Text style={styles.bold}>Không hoàn tiền</Text>.{"\n"}
+                   • <Text style={styles.bold}>Lỗi từ sân:</Text> Nếu lịch bị hủy do lỗi hệ thống hoặc từ phía chủ sân, bạn được hoàn <Text style={styles.bold}>100%</Text> ngay lập tức bất kể thời gian.
+                 </Text>
+
+                 <Text style={styles.policyHeader}>2. Quy trình Hoàn tiền (Khi hủy sân)</Text>
+                 <Text style={styles.policyText}>
+                   Do thanh toán được chuyển trực tiếp cho Chủ sân, quy trình hoàn tiền sẽ thực hiện như sau:{"\n"}
+                   1. <Text style={styles.bold}>Yêu cầu hủy:</Text> Bạn bấm "Hủy đặt sân" trên ứng dụng.{"\n"}
+                   2. <Text style={styles.bold}>Cung cấp thông tin:</Text> Nhập thông tin tài khoản ngân hàng của bạn (Tên NH, Số TK, Tên chủ TK) để nhận tiền hoàn.{"\n"}
+                   3. <Text style={styles.bold}>Xử lý:</Text> Hệ thống ghi nhận yêu cầu hủy và tính toán số tiền được hoàn (dựa trên chính sách ở mục 2). Trạng thái đơn chuyển thành <Text style={{fontStyle:'italic'}}>Chờ hoàn tiền</Text>.{"\n"}
+                   4. <Text style={styles.bold}>Nhận tiền:</Text> Chủ sân sẽ kiểm tra và chuyển khoản ngược lại vào tài khoản bạn đã cung cấp.{"\n"}
+                   5. <Text style={styles.bold}>Hoàn tất:</Text> Sau khi Chủ sân xác nhận đã chuyển, trạng thái đơn đổi thành <Text style={{fontStyle:'italic'}}>Đã hủy</Text> và bạn nhận được thông báo.
+                 </Text>
+                 
+                 <Text style={styles.policyNote}>
+                     *Bấm "Tôi đã hiểu và muốn Hủy" đồng nghĩa với việc bạn đã hiểu và đồng ý với toàn bộ chính sách trên.*
+                 </Text>
+            </PolicyModal>
+
             {/* Unified Cancel & Bank Picker Modal */}
             <Modal
                 visible={isCancelModalVisible}
@@ -245,7 +293,7 @@ export default function BookingDetailScreen() {
                             </>
                         ) : (
                             <>
-                                <Text style={styles.modalTitle}>Yêu cầu Hủy & Hoàn tiền</Text>
+                                <Text style={styles.modalTitle}>Thông tin nhận tiền hoàn</Text>
                                 
                                 <View style={styles.modalWarning}>
                                      <Text style={styles.modalWarningText}>{refundMessage}</Text>
@@ -334,4 +382,10 @@ const styles = StyleSheet.create({
     
     bankItem: { paddingVertical: 14, paddingHorizontal: 10 },
     bankItemText: { fontSize: 16, color: '#333' },
+
+    // Policy Styles
+    policyHeader: { fontSize: 16, fontWeight: 'bold', color: Colors.text, marginTop: 12, marginBottom: 8 },
+    policyText: { fontSize: 14, color: '#444', lineHeight: 22, marginBottom: 8 },
+    policyNote: { fontSize: 13, fontStyle: 'italic', color: '#666', marginTop: 12, textAlign: 'center' },
+    bold: { fontWeight: 'bold', color: '#000' },
 });

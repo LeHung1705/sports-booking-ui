@@ -127,6 +127,38 @@ export default function OwnerBookingsScreen() {
       );
   };
 
+  const handleDeclineBooking = (bookingId: string) => {
+    Alert.alert(
+      "Từ chối đơn",
+      "Bạn có chắc chắn muốn từ chối/hủy đơn này?",
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Từ chối",
+          style: 'destructive',
+          onPress: async () => {
+            setLoadingId(bookingId);
+            try {
+              await bookingApi.declineBooking(bookingId);
+              setBookings((prev) =>
+                prev.map((booking) =>
+                  booking.id === bookingId
+                    ? { ...booking, status: "CANCELED" }
+                    : booking
+                )
+              );
+              Alert.alert("Thành công", "Đã hủy đơn.");
+            } catch (error: any) {
+              Alert.alert("Lỗi", error.message || "Không thể hủy đơn.");
+            } finally {
+                setLoadingId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const formatDateTime = (isoString: string) => {
     const date = new Date(isoString);
     return {
@@ -159,17 +191,27 @@ export default function OwnerBookingsScreen() {
         {(item.status === "AWAITING_CONFIRM" || item.status === "PENDING_PAYMENT") && (
           <View style={styles.cardFooter}>
              <Text style={styles.noteText}>Khách đã chuyển khoản?</Text>
-            <TouchableOpacity
-              style={[styles.confirmButton, loadingId === item.id && styles.disabledButton]}
-              onPress={() => handleConfirmBooking(item.id)}
-              disabled={loadingId === item.id}
-            >
-              {loadingId === item.id ? (
-                  <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                  <Text style={styles.confirmButtonText}>Xác nhận thanh toán</Text>
-              )}
-            </TouchableOpacity>
+            <View style={{flexDirection: 'row', gap: 10}}>
+                <TouchableOpacity 
+                   style={[styles.declineButton, loadingId === item.id && styles.disabledButton]}
+                   onPress={() => handleDeclineBooking(item.id)}
+                   disabled={loadingId === item.id}
+                >
+                   <Text style={styles.declineButtonText}>Từ chối</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.confirmButton, loadingId === item.id && styles.disabledButton, { flex: 1 }]}
+                  onPress={() => handleConfirmBooking(item.id)}
+                  disabled={loadingId === item.id}
+                >
+                  {loadingId === item.id ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                      <Text style={styles.confirmButtonText}>Xác nhận thanh toán</Text>
+                  )}
+                </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -416,6 +458,18 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     color: "#fff",
     fontWeight: "bold",
+    fontSize: 14,
+  },
+  declineButton: {
+    backgroundColor: '#FF3B30',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  declineButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
     fontSize: 14,
   },
   refundInfo: {

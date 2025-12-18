@@ -55,17 +55,17 @@ export default function ChangePasswordScreen() {
   const handleUpdate = async () => {
     // Validate cơ bản
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'New passwords do not match');
+      Alert.alert('Lỗi', 'Mật khẩu mới không khớp');
       return;
     }
 
     if (!userEmail) {
-        Alert.alert('Error', 'User email not found. Please try reloading.');
+        Alert.alert('Lỗi', 'Không tìm thấy email người dùng. Vui lòng tải lại trang.');
         return;
     }
 
@@ -80,7 +80,7 @@ export default function ChangePasswordScreen() {
       });
 
       // Nếu thành công (Không nhảy vào catch)
-      Alert.alert('Success', 'Password updated successfully! Please login again.', [
+      Alert.alert('Thành công', 'Cập nhật mật khẩu thành công! Vui lòng đăng nhập lại.', [
         { 
             text: 'OK', 
             onPress: async () => {
@@ -94,8 +94,8 @@ export default function ChangePasswordScreen() {
     } catch (error: any) {
       console.error('Failed to change password', error);
       // Lấy thông báo lỗi từ Backend trả về (nếu có)
-      const message = error.response?.data?.message || 'Could not update password. Please check your current password.';
-      Alert.alert('Error', message);
+      const message = error.response?.data?.message || 'Không thể cập nhật mật khẩu. Vui lòng kiểm tra mật khẩu hiện tại.';
+      Alert.alert('Lỗi', message);
     } finally {
       setLoading(false);
     }
@@ -139,13 +139,13 @@ export default function ChangePasswordScreen() {
       keyboardVerticalOffset={0}
     >
       <View style={styles.container}>
-      <CustomHeader title="Change Password" showBackButton={true} />
+      <CustomHeader title="Đổi mật khẩu" showBackButton={true} />
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.sectionCard}>
-            {renderPasswordInput('Current Password', currentPassword, setCurrentPassword, showCurrent, setShowCurrent, 'Enter current password', 'current-password')}
-            {renderPasswordInput('New Password', newPassword, setNewPassword, showNew, setShowNew, 'Enter new password', 'new-password')}
-            {renderPasswordInput('Confirm New Password', confirmPassword, setConfirmPassword, showConfirm, setShowConfirm, 'Confirm new password', 'confirm-password')}
+            {renderPasswordInput('Mật khẩu hiện tại', currentPassword, setCurrentPassword, showCurrent, setShowCurrent, 'Nhập mật khẩu hiện tại', 'current-password')}
+            {renderPasswordInput('Mật khẩu mới', newPassword, setNewPassword, showNew, setShowNew, 'Nhập mật khẩu mới', 'new-password')}
+            {renderPasswordInput('Xác nhận mật khẩu mới', confirmPassword, setConfirmPassword, showConfirm, setShowConfirm, 'Xác nhận lại mật khẩu mới', 'confirm-password')}
           </View>
 
           <TouchableOpacity
@@ -157,7 +157,7 @@ export default function ChangePasswordScreen() {
             {loading ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text style={styles.saveButtonText}>Update Password</Text>
+              <Text style={styles.saveButtonText}>Cập nhật mật khẩu</Text>
             )}
           </TouchableOpacity>
         </ScrollView>

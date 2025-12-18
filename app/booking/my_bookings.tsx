@@ -77,7 +77,16 @@ export default function MyBookingsScreen() {
     const renderItem = ({ item }: { item: BookingListResponse }) => (
         <TouchableOpacity 
             style={styles.card}
-            onPress={() => router.push(`/booking/detail?id=${item.id}`)}
+            onPress={() => {
+                if (item.status === 'PENDING_PAYMENT') {
+                    router.push({
+                        pathname: '/booking/checkout',
+                        params: { bookingId: item.id }
+                    });
+                } else {
+                    router.push(`/booking/detail?id=${item.id}`);
+                }
+            }}
         >
             <View style={styles.cardHeader}>
                 <Text style={styles.venueName} numberOfLines={1}>{item.venue || 'Unknown Venue'}</Text>

@@ -37,27 +37,27 @@ export default function RevenueChart({ onStatsChange }: RevenueChartProps) {
           from = subDays(now, 1);
           from = startOfDay(from);
           to = endOfDay(from);
-          label = "Yesterday";
+          label = "Hôm qua";
           break;
         case 'WEEK':
           from = startOfWeek(now, { weekStartsOn: 1 }); 
           to = endOfWeek(now, { weekStartsOn: 1 });
-          label = "This Week";
+          label = "Tuần này";
           break;
         case 'MONTH':
           from = startOfMonth(now);
           to = endOfMonth(now);
-          label = "This Month";
+          label = "Tháng này";
           break;
         case 'CUSTOM':
           from = subDays(now, 7);
           to = endOfDay(now); 
-          label = "Custom Range";
+          label = "Tùy chọn";
           break;
         default:
           from = subDays(now, 7);
           to = endOfDay(now);
-          label = "Last 7 Days";
+          label = "7 ngày qua";
       }
 
       // Use toISOString() to match OwnerHistoryScreen behavior (UTC conversion)
@@ -103,12 +103,12 @@ export default function RevenueChart({ onStatsChange }: RevenueChartProps) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>REVENUE OVERVIEW</Text>
+      <Text style={styles.title}>TỔNG QUAN DOANH THU</Text>
       
       <View style={styles.filterContainer}>
-        {renderFilterBtn('Yesterday', 'YESTERDAY')}
-        {renderFilterBtn('Week', 'WEEK')}
-        {renderFilterBtn('Month', 'MONTH')}
+        {renderFilterBtn('Hôm qua', 'YESTERDAY')}
+        {renderFilterBtn('Tuần', 'WEEK')}
+        {renderFilterBtn('Tháng', 'MONTH')}
       </View>
 
       {loading ? (
@@ -175,7 +175,7 @@ export default function RevenueChart({ onStatsChange }: RevenueChartProps) {
                 />
             ) : (
                 <View style={{height: 160, justifyContent: 'center', alignItems: 'center'}}>
-                    <Text style={{color: '#999'}}>No data available for this period</Text>
+                    <Text style={{color: '#999'}}>Không có dữ liệu cho giai đoạn này</Text>
                 </View>
             )}
         </View>

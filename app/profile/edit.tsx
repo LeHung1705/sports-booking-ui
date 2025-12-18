@@ -56,12 +56,12 @@ export default function EditProfileScreen() {
     try {
       setLoading(true);
       await userApi.updateProfile({ fullName, phone, avatar });
-      Alert.alert('Success', 'Profile updated successfully', [
+      Alert.alert('Thành công', 'Cập nhật hồ sơ thành công', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error) {
       console.error('Failed to update profile', error);
-      Alert.alert('Error', 'Could not update profile. Please try again.');
+      Alert.alert('Lỗi', 'Không thể cập nhật hồ sơ. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -79,12 +79,12 @@ export default function EditProfileScreen() {
               <Text style={styles.avatarInitial}>{initial}</Text>
             </View>
           )}
-          <TouchableOpacity style={styles.cameraButton} onPress={() => Alert.alert('Change Photo', 'Photo picker not implemented yet')}>
+          <TouchableOpacity style={styles.cameraButton} onPress={() => Alert.alert('Đổi ảnh đại diện', 'Tính năng chọn ảnh chưa được cập nhật')}>
             <Ionicons name="camera" size={16} color={Colors.white} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={() => Alert.alert('Change Photo', 'Photo picker not implemented yet')}>
-          <Text style={styles.changePhotoText}>Change Photo</Text>
+        <TouchableOpacity onPress={() => Alert.alert('Đổi ảnh đại diện', 'Tính năng chọn ảnh chưa được cập nhật')}>
+          <Text style={styles.changePhotoText}>Đổi ảnh đại diện</Text>
         </TouchableOpacity>
       </View>
     );
@@ -97,7 +97,7 @@ export default function EditProfileScreen() {
       keyboardVerticalOffset={0}
     >
       <View style={styles.container}>
-        <CustomHeader title="Edit Profile" showBackButton={true} />
+        <CustomHeader title="Chỉnh sửa hồ sơ" showBackButton={true} />
 
         {initialLoading ? (
           <View style={styles.loader}>
@@ -106,30 +106,30 @@ export default function EditProfileScreen() {
         ) : (
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Public Profile</Text>
+              <Text style={styles.sectionTitle}>Hồ sơ công khai</Text>
               {renderAvatar()}
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Full Name</Text>
+                <Text style={styles.label}>Họ và tên</Text>
                 <View style={styles.inputRowSoft}>
                   <Ionicons name="person-outline" size={18} color={Colors.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter full name"
+                    placeholder="Nhập họ và tên"
                     value={fullName}
                     onChangeText={setFullName}
                     placeholderTextColor={Colors.textSecondary}
                   />
                 </View>
-                <Text style={styles.helperText}>This name will appear on your bookings.</Text>
+                <Text style={styles.helperText}>Tên này sẽ xuất hiện trên các đơn đặt sân của bạn.</Text>
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Bio / About Me</Text>
+                <Text style={styles.label}>Giới thiệu bản thân</Text>
                 <View style={[styles.inputRowSoft, styles.textArea]}>
                   <TextInput
                     style={[styles.input, styles.multilineInput]}
-                    placeholder="Tell others about you"
+                    placeholder="Giới thiệu đôi chút về bạn"
                     value={bio}
                     onChangeText={setBio}
                     placeholderTextColor={Colors.textSecondary}
@@ -140,7 +140,7 @@ export default function EditProfileScreen() {
             </View>
 
             <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Private Details</Text>
+              <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Email</Text>
@@ -158,12 +158,12 @@ export default function EditProfileScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Phone Number</Text>
+                <Text style={styles.label}>Số điện thoại</Text>
                 <View style={styles.inputRowSoft}>
                   <Ionicons name="call-outline" size={18} color={Colors.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter phone number"
+                    placeholder="Nhập số điện thoại"
                     keyboardType="phone-pad"
                     value={phone}
                     onChangeText={setPhone}
@@ -173,12 +173,12 @@ export default function EditProfileScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Address</Text>
+                <Text style={styles.label}>Địa chỉ</Text>
                 <View style={styles.inputRowSoft}>
                   <Ionicons name="location-outline" size={18} color={Colors.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter address"
+                    placeholder="Nhập địa chỉ"
                     value={address}
                     onChangeText={setAddress}
                     placeholderTextColor={Colors.textSecondary}
@@ -196,7 +196,7 @@ export default function EditProfileScreen() {
               {loading ? (
                 <ActivityIndicator color={Colors.white} />
               ) : (
-                <Text style={styles.saveButtonText}>Save Changes</Text>
+                <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
               )}
             </TouchableOpacity>
           </ScrollView>

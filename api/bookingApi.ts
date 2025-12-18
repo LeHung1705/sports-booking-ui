@@ -151,6 +151,15 @@ export const bookingApi = {
   },
 
   /**
+   * Decline booking (Owner action)
+   * PUT /api/v1/bookings/{id}/decline
+   */
+  declineBooking: async (bookingId: string): Promise<import("../types/booking").BookingDetailResponse> => {
+      const res = await apiClient.put<import("../types/booking").BookingDetailResponse>(`/bookings/${bookingId}/decline`);
+      return res.data;
+  },
+
+  /**
    * Get revenue stats for owner
    * GET /api/v1/bookings/owner/revenue-stats
    */

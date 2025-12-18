@@ -49,6 +49,13 @@ export interface VenueDetail {
   imageUrl?: string | null;
   avgRating?: number | null;
   reviewCount?: number | null;
+  
+  // Bank Info
+  bankBin?: string | null;
+  bankName?: string | null;
+  bankAccountNumber?: string | null;
+  bankAccountName?: string | null;
+
   courts: VenueDetailCourtItem[];
   pricingConfig?: PricingRule[];
 }

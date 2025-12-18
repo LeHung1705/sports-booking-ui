@@ -22,10 +22,11 @@ export interface BookingListResponse {
   court: string;
   userId?: string;
   userName?: string;
-  startTime: string;
-  endTime: string;
-  totalPrice: number;
-  status: string;
+  startTime: string; // Added missing property
+    endTime: string;
+    createdAt?: string;
+    totalPrice: number;
+    status: string;
   refundAmount?: number;
   refundBankName?: string;
   refundAccountNumber?: string;
@@ -74,14 +75,19 @@ export interface BookingDetailResponse {
   startTime: string;
   endTime: string;
   totalPrice: number;
+  discountAmount?: number;
+  voucherCode?: string;
+  createdAt: string;
   status: string;
-  payment?: {
-    id: string;
-    amount: number;
-    status: string;
-    returnPayload?: string;
-  };
-  refundAmount?: number;
+    payment?: PaymentItem;
+    
+    // Venue Bank Info
+    bankBin?: string;
+    bankAccountNumber?: string;
+    bankAccountName?: string;
+
+    // Refund Info
+    refundAmount?: number;
   refundBankName?: string;
   refundAccountNumber?: string;
   refundAccountName?: string;

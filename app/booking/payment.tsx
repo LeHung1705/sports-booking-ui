@@ -91,33 +91,6 @@ export default function PaymentScreen() {
             <Text style={styles.bankInfoText}>Account: {bankAccount}</Text>
           </View>
 
-
-          <View style={styles.refundSection}>
-            <Text style={styles.sectionHeader}>Refund Information (Optional)</Text>
-            <Text style={styles.subText}>Provide your bank details for quick refund in case of cancellation.</Text>
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Your Bank Name (e.g., MBBank)"
-              value={refundBankName}
-              onChangeText={setRefundBankName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Your Account Number"
-              value={refundAccountNumber}
-              onChangeText={setRefundAccountNumber}
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Your Account Name (e.g., NGUYEN VAN A)"
-              value={refundAccountName}
-              onChangeText={setRefundAccountName}
-              autoCapitalize="characters"
-            />
-          </View>
-
         </ScrollView>
         
         <View style={styles.footer}>
