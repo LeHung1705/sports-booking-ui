@@ -86,6 +86,12 @@ apiClient.interceptors.response.use(
 
 // ============ HELPER FUNCTIONS ============
 export const getBaseURL = () => API_BASE_URL;
+// Thêm đoạn này vào cuối file hoặc trong export
+export const notificationApi = {
+  registerToken: async (token: string, deviceType: string) => {
+    return apiClient.post("/notifications/register", { token, deviceType });
+  },
+};
 
 export const testConnection = async (): Promise<boolean> => {
   try {

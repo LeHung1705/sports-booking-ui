@@ -104,3 +104,18 @@ export interface TimeTableData {
   courtName: string;
   slots: TimeTableSlot[];
 }
+
+// UI types for court slots selection
+export interface TimeSlot {
+  id: string;
+  time: string;
+  price: number;
+  isAvailable: boolean;
+}
+
+export interface Court {
+  id: string;
+  name: string;
+  type?: string;
+  slots: TimeSlot[];
+}

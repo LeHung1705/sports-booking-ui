@@ -202,6 +202,10 @@ const styles = StyleSheet.create({
       borderRadius: 4,
       marginTop: 4,
   },
+  roleText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   bgUser: { backgroundColor: '#E3F2FD' },
   bgOwner: { backgroundColor: '#E8F5E9' },
   bgAdmin: { backgroundColor: '#FCE4EC' },

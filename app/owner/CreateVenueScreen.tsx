@@ -14,6 +14,9 @@ import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import CustomHeader from '@/components/ui/CustomHeader';
 
+// Lấy API key từ env (Expo: thêm EXPO_PUBLIC_GOOGLE_MAPS_API_KEY vào app config)
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
 // ⬇️ CHANGED: dùng apiClient chung thay vì axios + tự gắn token
 import apiClient from '../../api/apiClient';
 
@@ -51,36 +54,116 @@ const CreateVenueScreen = () => {
 
   // --- HANDLERS ---
 
-  // Geocode theo địa chỉ người dùng nhập (không dùng GPS thiết bị)
+  // Geocode: ưu tiên OpenStreetMap (miễn phí), fallback Google (nếu có key), cuối cùng là Expo Location
+  // Geocode: ưu tiên OpenStreetMap (miễn phí), fallback Google (nếu có key), cuối cùng là Expo Location
+  // --- HÀM geocodeAddress ĐÃ ĐƯỢC NÂNG CẤP LOGIC ---
+  // --- HÀM TÌM KIẾM ĐỊA CHỈ (Dùng OpenStreetMap - Miễn phí 100%) ---
   const geocodeAddress = async () => {
-    const query = [address, district, city].filter(Boolean).join(', ');
-    if (!query.trim()) {
-      Alert.alert('Thiếu địa chỉ', 'Nhập địa chỉ + quận/huyện + thành phố trước khi lấy tọa độ.');
+    // 1. Chuẩn hóa dữ liệu
+    const nameText = name.trim();
+    const addressText = address.trim();
+    const districtText = district.trim();
+    const cityText = city.trim();
+
+    // Validate: Bắt buộc phải có (Tên HOẶC Địa chỉ) VÀ (Quận HOẶC Thành phố)
+    if ((!addressText && !nameText) || (!districtText && !cityText)) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập "Tên sân/Địa chỉ" và "Quận/Thành phố".');
       return;
     }
 
     setIsLoadingLocation(true);
+
+    // Hàm gọi API OpenStreetMap (Nominatim)
+    const searchOSM = async (query: string) => {
+      try {
+        console.log("🌍 Đang tìm trên OpenStreetMap:", query);
+        // limit=1: Lấy 1 kết quả chuẩn nhất
+        // addressdetails=1: Lấy chi tiết
+        const osmUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`;
+        
+        const res = await fetch(osmUrl, {
+          headers: { 
+            // QUAN TRỌNG: Phải có User-Agent để không bị chặn
+            'User-Agent': 'SportsBookingApp-StudentProject/1.0' 
+          },
+        });
+        const data = await res.json();
+        
+        if (Array.isArray(data) && data.length > 0) {
+          return data[0]; // Trả về kết quả đầu tiên
+        }
+      } catch (e) {
+        console.warn("Lỗi tìm kiếm OSM:", e);
+      }
+      return null;
+    };
+
     try {
-      // Một số thiết bị yêu cầu quyền; xin quyền để tránh lỗi
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Cần quyền', 'Cho phép quyền vị trí để geocode địa chỉ.');
-        return;
+      // Xin quyền vị trí (Vẫn cần để app hoạt động đúng chuẩn)
+      await Location.requestForegroundPermissionsAsync();
+
+      let result = null;
+      let methodUsed = '';
+
+      // --- BƯỚC 1: Tìm theo TÊN SÂN + QUẬN + TP (Chính xác nhất cho địa điểm công cộng) ---
+      if (nameText) {
+        const queryName = [nameText, districtText, cityText].filter(Boolean).join(', ');
+        result = await searchOSM(queryName);
+        if (result) methodUsed = 'Tên địa điểm';
       }
 
-      const results = await Location.geocodeAsync(query);
-      if (!results.length) {
-        Alert.alert('Không tìm thấy', 'Không tìm được tọa độ cho địa chỉ này.');
-        return;
+      // --- BƯỚC 2: Tìm theo ĐỊA CHỈ + QUẬN + TP (Nếu bước 1 không ra) ---
+      if (!result && addressText) {
+        const queryAddress = [addressText, districtText, cityText].filter(Boolean).join(', ');
+        result = await searchOSM(queryAddress);
+        if (result) methodUsed = 'Địa chỉ';
       }
 
-      const { latitude: latValue, longitude: lngValue } = results[0];
-      setLatitude(latValue.toString());
-      setLongitude(lngValue.toString());
-      Alert.alert('Đã lấy tọa độ', `Lat: ${latValue.toFixed(6)}\nLng: ${lngValue.toFixed(6)}`);
+      // --- BƯỚC 3: Tìm theo ĐƯỜNG + QUẬN + TP (Nếu số nhà bị sai) ---
+      if (!result && addressText) {
+         // Cố gắng loại bỏ số nhà, chỉ lấy tên đường
+         // Ví dụ: "249 Đặng Văn Bi" -> lấy "Đặng Văn Bi"
+         const streetOnly = addressText.replace(/^[0-9\/]+\s+/g, ''); 
+         if (streetOnly !== addressText) {
+             const queryStreet = [streetOnly, districtText, cityText].filter(Boolean).join(', ');
+             result = await searchOSM(queryStreet);
+             if (result) methodUsed = 'Tên đường (Tương đối)';
+         }
+      }
+
+      // --- XỬ LÝ KẾT QUẢ ---
+      if (result) {
+        const lat = result.lat;
+        const lng = result.lon; // OSM dùng 'lon' thay vì 'lng'
+        
+        setLatitude(lat);
+        setLongitude(lng);
+
+        console.log(`✅ Tìm thấy [${methodUsed}]:`, lat, lng);
+        Alert.alert(
+          `Thành công (${methodUsed})`, 
+          `Địa điểm: ${result.display_name}\n\nLat: ${parseFloat(lat).toFixed(6)}\nLng: ${parseFloat(lng).toFixed(6)}`
+        );
+      } else {
+        // --- BƯỚC CUỐI: Dùng Native Geocoder của điện thoại (Fallback) ---
+        console.log("📱 Chuyển sang Native Geocoder...");
+        const fallbackQuery = [addressText, districtText, cityText].filter(Boolean).join(', ');
+        const nativeResults = await Location.geocodeAsync(fallbackQuery);
+        
+        if (nativeResults.length > 0) {
+           const lat = nativeResults[0].latitude.toString();
+           const lng = nativeResults[0].longitude.toString();
+           setLatitude(lat);
+           setLongitude(lng);
+           Alert.alert("Kết quả (Thiết bị)", `Tìm thấy tọa độ tương đối.\nLat: ${lat}\nLng: ${lng}`);
+        } else {
+           Alert.alert("Thất bại", "Không tìm thấy địa điểm này. Hãy thử nhập tên phổ biến hơn (Ví dụ: Làng Thiếu Niên Thủ Đức).");
+        }
+      }
+
     } catch (error) {
-      console.error('Geocode failed', error);
-      Alert.alert('Lỗi', 'Không thể lấy tọa độ. Thử lại sau.');
+      console.error(error);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi tìm kiếm.');
     } finally {
       setIsLoadingLocation(false);
     }
@@ -259,7 +342,7 @@ const CreateVenueScreen = () => {
           <View style={styles.inputContainer}>
             <TextInput 
               style={[styles.input, { flex: 1, marginBottom: 0 }]} 
-              placeholder="Street, City, Zip" 
+              placeholder="Số nhà, đường, phường, quận, thành phố" 
               placeholderTextColor="#9CA3AF"
               value={address} onChangeText={handleAddressChange}
             />
@@ -318,7 +401,7 @@ const CreateVenueScreen = () => {
               value={longitude} onChangeText={setLongitude}
             />
           </View>
-          <Text style={styles.helperText}>Nhập địa chỉ/quận/thành phố rồi bấm “Lấy GPS từ địa chỉ” để geocode.</Text>
+          <Text style={styles.helperText}>Ô Address phải chứa: số nhà + tên đường, phường, quận, thành phố (ngăn cách dấu phẩy). City/District bên dưới chỉ để lưu DB.</Text>
         </View>
 
         <View style={styles.inputGroup}>
