@@ -51,5 +51,10 @@ export const venueApi = {
           params: { date }
       });
       return res.data;
-  }
+  },
+  async getMyVenues(): Promise<VenueDetail[]> { // Using VenueDetail as it matches response structure mostly or I should use specific type
+      const res = await apiClient.get<VenueDetail[]>("/venues/my-venues");
+      return res.data;
+  },
+
 };

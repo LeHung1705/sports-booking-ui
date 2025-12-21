@@ -11,7 +11,7 @@ export interface AdminUserItem {
   uid: string;
   email: string;
   fullName: string;
-  role: "ROLE_USER" | "ROLE_OWNER" | "ROLE_ADMIN";
+  role: "USER" | "OWNER" | "ADMIN";
 }
 
 // Extend VenueListItem or define specific pending venue type
@@ -52,5 +52,9 @@ export const adminApi = {
 
   upgradeUserToOwner: async (userId: string): Promise<void> => {
     await apiClient.put(`/admin/users/${userId}/upgrade`);
+  },
+
+  degradeUserToUser: async (userId: string): Promise<void> => {
+    await apiClient.put(`/admin/users/${userId}/degrade`);
   },
 };

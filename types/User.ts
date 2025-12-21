@@ -3,12 +3,13 @@ export type UserRole = 'ROLE_USER' | 'ROLE_OWNER' | 'ROLE_ADMIN';
 
 // Khớp với dữ liệu API trả về
 export interface User {
-  id: number;
-  fullName: string; // Trong Excel có thể là full_name, bạn cần check kỹ JSON thực tế
+  id: string; // Updated to match UUID string from backend
+  fullName: string;
   email: string;
   phone: string;
-  avatar?: string;  // Dấu ? nghĩa là có thể null
-  role: UserRole;   // Quan trọng: Dùng để chia giao diện
+  avatar?: string;
+  role: UserRole;
+  stats?: Record<string, any>; // Add stats map
 }
 
 // Interface cho việc update (chỉ gửi những gì cần sửa)

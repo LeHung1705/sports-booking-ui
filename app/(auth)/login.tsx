@@ -29,7 +29,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin");
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
@@ -61,11 +61,11 @@ export default function LoginScreen() {
         // ------------------------------------------
       }
 
-      Alert.alert("Thành công", "Đăng nhập thành công!", [
+      Alert.alert("Success", "Login successful!", [
         { text: "OK", onPress: () => router.replace("/(tabs)") },
       ]);
     } catch (error: any) {
-      Alert.alert("Lỗi", error.response?.data?.message || "Đăng nhập thất bại");
+      Alert.alert("Error", error.response?.data?.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -88,7 +88,7 @@ export default function LoginScreen() {
         {/* Text header */}
         <Text style={styles.title}>Welcome, TechBo!</Text>
         <Text style={styles.subtitle}>
-          Đặt sân thể thao nhanh chóng, tiện lợi và kết nối đam mê mọi lúc mọi nơi.
+        Đặt sân thể thao nhanh chóng, tiện lợi và kết nối đam mê mọi lúc mọi nơi.
         </Text>
 
         {/* Form */}
@@ -105,7 +105,7 @@ export default function LoginScreen() {
           <View style={styles.passwordContainer}>
             <TextInput
               style={styles.passwordInput}
-              placeholder="Mật khẩu"
+              placeholder="Password"
               placeholderTextColor="#aaa"
               secureTextEntry={!showPassword}
               value={password}
@@ -121,7 +121,7 @@ export default function LoginScreen() {
           </View>
 
           <TouchableOpacity onPress={() => router.push("./forgot-password")}>
-            <Text style={styles.forgot}>Quên mật khẩu?</Text>
+            <Text style={styles.forgot}>Forgot Password?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -132,13 +132,13 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Đăng Nhập</Text>
+              <Text style={styles.buttonText}>Login</Text>
             )}
           </TouchableOpacity>
         </View>
 
         {/* Social login */}
-        <Text style={styles.orText}>hoặc</Text>
+        <Text style={styles.orText}>or</Text>
 
         <View style={styles.socialContainer}>
           <TouchableOpacity style={styles.socialButton}>
@@ -154,9 +154,9 @@ export default function LoginScreen() {
 
         {/* Register */}
         <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Bạn chưa có tài khoản? </Text>
+          <Text style={styles.registerText}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => router.push("./register")}>
-            <Text style={styles.registerLink}>Đăng ký</Text>
+            <Text style={styles.registerLink}>Register</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

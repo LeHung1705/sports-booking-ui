@@ -10,10 +10,12 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  ActivityIndicator
 } from "react-native";
 
 import { venueApi } from "@/api/venueApi";
+import { bookingApi } from "@/api/bookingApi"; // Added import
 import { Colors } from "@/constants/Colors";
 import { TimeTableData, TimeTableSlot } from "@/types/booking";
 import { transformToTimeTable } from "@/utils/bookingUtils";
@@ -54,6 +56,7 @@ export default function ScheduleScreen() {
   const [tableData, setTableData] = useState<TimeTableData[]>([]);
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false); // New state for creation loading
 
   // Load data
   useEffect(() => {
@@ -125,7 +128,7 @@ export default function ScheduleScreen() {
     return sum;
   }, 0);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedSlotIds.length === 0) {
       Alert.alert("Chưa chọn giờ", "Vui lòng chọn ít nhất một khung giờ.");
       return;
@@ -145,20 +148,65 @@ export default function ScheduleScreen() {
         });
     });
 
+    // Validation 1: Check if all slots are on the same court
+    const firstCourtId = selectedSlotsData[0].courtId;
+    const isSameCourt = selectedSlotsData.every(s => s.courtId === firstCourtId);
+    if (!isSameCourt) {
+        Alert.alert("Lỗi chọn sân", "Vui lòng chỉ chọn các khung giờ trên cùng một sân.");
+        return;
+    }
+
+    // Sort slots by time
+    selectedSlotsData.sort((a, b) => a.time.localeCompare(b.time));
+
+    // Validation 2: Check for gaps (optional but recommended)
+    // We can assume user wants to book the range from Start of First to End of Last.
+    // Ideally, we should check continuity.
+    
+    // Prepare API Payload
     const year = selectedDate.getFullYear();
     const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
     const day = String(selectedDate.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
 
-    router.push({
-      pathname: "/booking/checkout",
-      params: {
-        venueId,
-        date: dateStr,
-        slots: JSON.stringify(selectedSlotsData),
-        totalAmount: totalPrice,
-      },
-    });
+    const startTimeStr = `${dateStr}T${selectedSlotsData[0].time}:00`;
+    
+    // Calculate End Time: Last slot time + 30 mins
+    const lastSlotTime = selectedSlotsData[selectedSlotsData.length - 1].time;
+    const [h, m] = lastSlotTime.split(':').map(Number);
+    const endDate = new Date(selectedDate);
+    endDate.setHours(h, m + 30, 0, 0); // Add 30 mins
+    
+    // Format endDate back to YYYY-MM-DDTHH:mm:00
+    // Using explicit formatting to avoid timezone issues with toISOString() in some envs
+    const endY = endDate.getFullYear();
+    const endM = String(endDate.getMonth() + 1).padStart(2, '0');
+    const endD = String(endDate.getDate()).padStart(2, '0');
+    const endH = String(endDate.getHours()).padStart(2, '0');
+    const endMin = String(endDate.getMinutes()).padStart(2, '0');
+    
+    const endTimeStr = `${endY}-${endM}-${endD}T${endH}:${endMin}:00`;
+
+    setCreating(true);
+    try {
+        const res = await bookingApi.createBooking({
+            court_id: firstCourtId,
+            start_time: startTimeStr,
+            end_time: endTimeStr,
+            payment_option: "DEPOSIT" // Default, can be changed in checkout if logic supports
+        });
+
+        router.push({
+            pathname: "/booking/checkout",
+            params: {
+                bookingId: res.id
+            },
+        });
+    } catch (e: any) {
+        Alert.alert("Lỗi đặt sân", e.response?.data?.message || "Không thể tạo đơn hàng. Vui lòng thử lại.");
+    } finally {
+        setCreating(false);
+    }
   };
 
   const renderDateItem = ({ item }: { item: Date }) => {
@@ -331,13 +379,19 @@ export default function ScheduleScreen() {
         <TouchableOpacity
           style={[
             styles.btnContinue,
-            selectedSlotIds.length === 0 && styles.btnDisabled,
+            (selectedSlotIds.length === 0 || creating) && styles.btnDisabled,
           ]}
-          disabled={selectedSlotIds.length === 0}
+          disabled={selectedSlotIds.length === 0 || creating}
           onPress={handleContinue}
         >
-          <Text style={styles.btnText}>Tiếp tục</Text>
-          <Ionicons name="arrow-forward" size={20} color="#fff" />
+          {creating ? (
+             <ActivityIndicator color="#fff" size="small" />
+          ) : (
+             <>
+                 <Text style={styles.btnText}>Tiếp tục</Text>
+                 <Ionicons name="arrow-forward" size={20} color="#fff" />
+             </>
+          )}
         </TouchableOpacity>
       </View>
     </View>

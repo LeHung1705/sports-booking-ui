@@ -16,13 +16,13 @@ import { adminApi } from '../../api/adminApi';
 import { authApi } from '../../api/authApi';
 import { bookingApi } from '../../api/bookingApi';
 import { userApi } from '../../api/userApi';
-import { venueApi } from '../../api/venueApi';
 import { Colors } from '../../constants/Colors';
 import { User } from '../../types/User';
 import { BookingListResponse } from "../../types/booking";
 
 import MenuOption from '../../components/profile/MenuOption';
 import ProfileHeader from '../../components/profile/ProfileHeader';
+import RevenueChart from '../../components/profile/RevenueChart';
 import StatsCard from '../../components/profile/StatsCard';
 
 export default function ProfileScreen() {
@@ -34,7 +34,7 @@ export default function ProfileScreen() {
   // Owner specific state
   const [pendingBookings, setPendingBookings] = useState<BookingListResponse[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [ownerFirstVenueId, setOwnerFirstVenueId] = useState<string | null>(null);
+  const [chartStats, setChartStats] = useState<{ revenue: number; bookings: number; label: string } | null>(null);
 
   // Admin specific state
   const [adminStats, setAdminStats] = useState<{ users: number; venues: number; pendingVenues: number } | null>(null);
@@ -71,24 +71,11 @@ export default function ProfileScreen() {
 
   // 2. Fetch Owner Pending Bookings (Logic từ feature/booking: Tính năng Owner)
   useEffect(() => {
-    if (user?.role === 'ROLE_OWNER') {
+    const role = (user?.role || '').toUpperCase();
+    if (role.includes('OWNER')) {
       fetchPendingBookings();
-      // Lấy venue đầu tiên của owner để mở chi tiết
-      venueApi
-        .listMyVenues()
-        .then((list) => {
-          if (Array.isArray(list) && list.length > 0) {
-            setOwnerFirstVenueId(list[0].id);
-          } else {
-            setOwnerFirstVenueId(null);
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to load owner venues', err);
-          setOwnerFirstVenueId(null);
-        });
     }
-    if (user?.role === 'ROLE_ADMIN') {
+    if (role.includes('ADMIN')) {
       fetchAdminStats();
     }
   }, [user]);
@@ -104,40 +91,16 @@ export default function ProfileScreen() {
 
   const fetchAdminStats = async () => {
     try {
-      const [stats, pendingVenues] = await Promise.all([
-        adminApi.getStats(),
-        adminApi.getPendingVenues()
-      ]);
+      const stats = await adminApi.getStats();
       setAdminStats({
         users: stats.totalUsers,
         venues: stats.totalVenues,
-        pendingVenues: pendingVenues.length
+        pendingVenues: stats.pendingVenues ?? 0
       });
     } catch (error) {
       console.error("Failed to fetch admin stats", error);
     }
   };
-
-  const handleOpenVenueDetail = useCallback(async () => {
-    if (ownerFirstVenueId) {
-      router.push({ pathname: '/owner/VenueDetailScreen', params: { venueId: ownerFirstVenueId } });
-      return;
-    }
-
-    try {
-      const list = await venueApi.listMyVenues();
-      if (Array.isArray(list) && list.length > 0) {
-        const firstId = list[0].id;
-        setOwnerFirstVenueId(firstId);
-        router.push({ pathname: '/owner/VenueDetailScreen', params: { venueId: firstId } });
-      } else {
-        Alert.alert('Chưa có Venue', 'Bạn chưa có sân hoặc chưa lấy được danh sách sân.');
-      }
-    } catch (error) {
-      console.error('Failed to load owner venues', error);
-      Alert.alert('Chưa có Venue', 'Bạn chưa có sân hoặc chưa lấy được danh sách sân.');
-    }
-  }, [ownerFirstVenueId, router]);
 
   const handleConfirmBooking = async (bookingId: string) => {
     setProcessingId(bookingId);
@@ -153,10 +116,10 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Confirm Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert('Xác nhận đăng xuất', 'Bạn có chắc chắn muốn đăng xuất không?', [
+      { text: 'Hủy', style: 'cancel' },
       {
-        text: 'Logout',
+        text: 'Đăng xuất',
         style: 'destructive',
         onPress: async () => {
           setLogoutLoading(true);
@@ -225,16 +188,16 @@ export default function ProfileScreen() {
         return (
           <>
             <View style={styles.menuSection}>
-              <Text style={styles.sectionTitle}>ACCOUNT</Text>
+              <Text style={styles.sectionTitle}>TÀI KHOẢN</Text>
               <View style={styles.menuCard}>
                 <MenuOption
                   icon="person-outline"
-                  title="Edit Profile"
+                  title="Chỉnh sửa hồ sơ"
                   onPress={() => router.push('/profile/edit')}
                 />
                 <MenuOption
                   icon="lock-closed-outline"
-                  title="Change Password"
+                  title="Đổi mật khẩu"
                   onPress={() => router.push('/profile/change-password')}
                   showBorder={false}
                 />
@@ -242,12 +205,12 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.menuSection}>
-              <Text style={styles.sectionTitle}>ACTIVITY</Text>
+              <Text style={styles.sectionTitle}>HOẠT ĐỘNG</Text>
               <View style={styles.menuCard}>
                 <MenuOption
                   icon="time-outline"
-                  title="Booking History"
-                  onPress={() => Alert.alert('Coming Soon', 'Booking history feature will be available soon')}
+                  title="Lịch sử đặt sân"
+                  onPress={() => router.push('/booking/my_bookings')}
                   showBorder={false}
                 />
               </View>
@@ -259,6 +222,9 @@ export default function ProfileScreen() {
     if (role.includes('OWNER')) {
       return (
         <>
+          <RevenueChart onStatsChange={(rev, bks, lbl) => setChartStats({ revenue: rev, bookings: bks, label: lbl })} />
+          
+
           {/* Section Booking Chờ Duyệt của Owner */}
           {pendingBookings.length > 0 && (
              <View style={styles.menuSection}>
@@ -268,7 +234,10 @@ export default function ProfileScreen() {
                         <View key={item.id} style={styles.pendingItem}>
                             <View style={{flex: 1}}>
                                 <Text style={styles.pendingCourt}>{item.court} - {item.venue}</Text>
-                                <Text style={styles.pendingUser}>{item.userName || "Khách"}</Text>
+                                <Text style={styles.pendingUser}>
+                                  {item.userName || "Khách"} {item.userId ? `(#${item.userId.substring(0, 8)})` : ''}
+                                </Text>
+                                <Text style={styles.pendingId}>ID: {item.id}</Text>
                                 <Text style={styles.pendingPrice}>
                                     {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalPrice)}
                                 </Text>
@@ -290,88 +259,107 @@ export default function ProfileScreen() {
              </View>
           )}
 
+
           <View style={styles.menuSection}>
-            <Text style={styles.sectionTitle}>VENUE MANAGEMENT</Text>
+            <Text style={styles.sectionTitle}>QUẢN LÝ SÂN BÃI</Text>
             <View style={styles.menuCard}>
+              <MenuOption
+                icon="calendar-outline"
+                title="Quản lý đặt sân"
+                onPress={() => router.push('/owner/bookings')}
+              />
+              <MenuOption
+                icon="stats-chart-outline"
+                title="Lịch sử & Doanh thu"
+                onPress={() => router.push('/owner/history')}
+              />
               <MenuOption
                 icon="business-outline"
-                title="My Venue Details"
-                onPress={handleOpenVenueDetail}
-              />
-              <MenuOption
-                icon="add-circle-outline"
-                title="Create New Venue"
-                onPress={() => router.push('/owner/CreateVenueScreen')}
-              />
-              <MenuOption
-                icon="create-outline"
-                title="Edit Venue Info"
-                onPress={() => router.push('/owner/edit-venue')}
+                title="Sân của tôi"
+                onPress={() => router.push('/owner/my-venues')}
                 showBorder={false}
               />
             </View>
           </View>
 
           <View style={styles.menuSection}>
-            <Text style={styles.sectionTitle}>COURT SYSTEM</Text>
-            <View style={styles.menuCard}>
-              <MenuOption
-                icon="grid-outline"
-                title="Court List"
-                onPress={() => router.push('/owner/court-list')}
-              />
-              <MenuOption
-                icon="add-outline"
-                title="Add New Court"
-                onPress={() => router.push('/owner/add-court')}
-                showBorder={false}
-              />
-            </View>
-          </View>
-
-          <View style={styles.menuSection}>
-            <Text style={styles.sectionTitle}>PROMOTION & VOUCHERS</Text>
+            <Text style={styles.sectionTitle}>KHUYẾN MÃI & VOUCHER</Text>
             <View style={styles.menuCard}>
               <MenuOption
                 icon="ticket-outline"
-                title="My Vouchers"
+                title="Voucher của tôi"
                 onPress={() => router.push('/owner/listvoucher')}
               />
               <MenuOption
                 icon="pricetag-outline"
-                title="Create/Edit Voucher"
+                title="Tạo/Sửa Voucher"
                 onPress={() => router.push('/owner/create')}
                 showBorder={false}
               />
             </View>
           </View>
+
+          <View style={styles.menuSection}>
+              <Text style={styles.sectionTitle}>TÀI KHOẢN</Text>
+              <View style={styles.menuCard}>
+                <MenuOption
+                  icon="person-outline"
+                  title="Chỉnh sửa hồ sơ"
+                  onPress={() => router.push('/profile/edit')}
+                />
+                <MenuOption
+                  icon="lock-closed-outline"
+                  title="Đổi mật khẩu"
+                  onPress={() => router.push('/profile/change-password')}
+                />
+                <MenuOption
+                  icon="time-outline"
+                  title="Lịch sử đặt sân"
+                  onPress={() => router.push('/booking/my_bookings')}
+                  showBorder={false}
+                />
+              </View>
+            </View>
         </>
       );
     }
 
     if (role.includes('ADMIN')) {
       return (
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>SYSTEM MANAGEMENT</Text>
-          <View style={styles.menuCard}>
-            <MenuOption
-              icon="checkmark-circle-outline"
-              title="Phê duyệt Venue mới"
-              onPress={() => router.push('/admin/approve-venues')}
-            />
-            <MenuOption
-              icon="people-outline"
-              title="Nâng cấp User -> Owner"
-              onPress={() => router.push('/admin/manage-users')}
-            />
-            <MenuOption
-              icon="bar-chart-outline"
-              title="Revenue Overview"
-              onPress={() => console.log('Navigate to Revenue Overview')}
-              showBorder={false}
-            />
+        <>
+          <View style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>HOẠT ĐỘNG CỦA TÔI</Text>
+            <View style={styles.menuCard}>
+              <MenuOption
+                icon="time-outline"
+                title="Lịch sử đặt sân của tôi"
+                onPress={() => router.push('/booking/my_bookings')}
+              />
+            </View>
           </View>
-        </View>
+
+          <View style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>QUẢN TRỊ HỆ THỐNG</Text>
+            <View style={styles.menuCard}>
+              <MenuOption
+                icon="checkmark-circle-outline"
+                title="Phê duyệt Venue mới"
+                onPress={() => router.push('/admin/approve-venues')}
+              />
+              <MenuOption
+                icon="people-outline"
+                title="Quản lý users"
+                onPress={() => router.push('/admin/manage-users')}
+              />
+              <MenuOption
+                icon="bar-chart-outline"
+                title="Tổng quan doanh thu"
+                onPress={() => console.log('Navigate to Revenue Overview')}
+                showBorder={false}
+              />
+            </View>
+          </View>
+        </>
       );
     }
     
@@ -382,7 +370,7 @@ export default function ProfileScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Loading profile...</Text>
+        <Text style={styles.loadingText}>Đang tải hồ sơ...</Text>
       </View>
     );
   }
@@ -390,7 +378,7 @@ export default function ProfileScreen() {
   if (!user) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Failed to load profile</Text>
+        <Text style={styles.errorText}>Không thể tải hồ sơ</Text>
       </View>
     );
   }
@@ -408,17 +396,17 @@ export default function ProfileScreen() {
       {(user.role || 'USER').toUpperCase().includes('ADMIN') ? (
         <StatsCard
           items={[
-            { label: 'Total Users', value: adminStats?.users },
-            { label: 'Total Venues', value: adminStats?.venues },
-            { label: 'Pending Venues', value: adminStats?.pendingVenues, bold: true },
+            { label: 'Tổng người dùng', value: adminStats?.users },
+            { label: 'Tổng địa điểm', value: adminStats?.venues },
+            { label: 'Địa điểm chờ duyệt', value: adminStats?.pendingVenues, bold: true },
           ]}
         />
       ) : (user.role || 'USER').toUpperCase().includes('OWNER') ? (
         <StatsCard
           items={[
-            { label: 'Total Revenue', value: stats.owner.formatCompact(stats.owner.revenue), bold: true },
-            { label: 'Total Bookings', value: stats.owner.bookings },
-            { label: 'Active Courts', value: stats.owner.activeCourts },
+            { label: chartStats ? `Doanh thu (${chartStats.label})` : 'Tổng doanh thu', value: chartStats ? stats.owner.formatCompact(chartStats.revenue) : stats.owner.formatCompact(stats.owner.revenue), bold: true },
+            { label: chartStats ? `Lượt đặt (${chartStats.label})` : 'Tổng lượt đặt', value: chartStats ? chartStats.bookings : stats.owner.bookings },
+            { label: 'Sân hoạt động', value: stats.owner.activeCourts },
           ]}
         />
       ) : (
@@ -433,22 +421,22 @@ export default function ProfileScreen() {
 
       {/* GENERAL Section - Chung cho tất cả */}
       <View style={styles.menuSection}>
-        <Text style={styles.sectionTitle}>GENERAL</Text>
+        <Text style={styles.sectionTitle}>CHUNG</Text>
         <View style={styles.menuCard}>
           <MenuOption
             icon="settings-outline"
-            title="Settings"
-            onPress={() => Alert.alert('Coming Soon', 'Settings feature will be available soon')}
+            title="Cài đặt"
+            onPress={() => Alert.alert('Sắp ra mắt', 'Tính năng cài đặt sẽ sớm ra mắt')}
           />
           <MenuOption
             icon="help-circle-outline"
-            title="Help & Support"
-            onPress={() => Alert.alert('Coming Soon', 'Help & Support feature will be available soon')}
+            title="Trợ giúp & Hỗ trợ"
+            onPress={() => Alert.alert('Sắp ra mắt', 'Tính năng trợ giúp & hỗ trợ sẽ sớm ra mắt')}
           />
           <MenuOption
             icon="shield-checkmark-outline"
-            title="Privacy Policy"
-            onPress={() => Alert.alert('Coming Soon')}
+            title="Chính sách bảo mật"
+            onPress={() => Alert.alert('Sắp ra mắt')}
             showBorder={false}
           />
         </View>
@@ -465,7 +453,7 @@ export default function ProfileScreen() {
         ) : (
           <>
             <Ionicons name="log-out-outline" size={22} color={Colors.white} style={styles.logoutIcon} />
-            <Text style={styles.logoutText}>Log Out</Text>
+            <Text style={styles.logoutText}>Đăng xuất</Text>
           </>
         )}
       </TouchableOpacity>
@@ -632,6 +620,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+  },
+  pendingId: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 1,
+    fontFamily: 'monospace',
   },
   pendingPrice: {
     fontSize: 13,

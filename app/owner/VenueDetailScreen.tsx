@@ -6,9 +6,7 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
   ActivityIndicator,
-  Platform,
   Alert
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -16,6 +14,7 @@ import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { venueApi } from "../../api/venueApi";
 import { Colors } from "../../constants/Colors";
 import { VenueDetail as ApiVenueDetail } from "../../types/venue";
+import CustomHeader from "../../components/ui/CustomHeader";
 
 interface Court {
   id: string;
@@ -40,52 +39,21 @@ type VenueDetail = ApiVenueDetail & {
 
 export default function VenueDetailScreen() {
   const router = useRouter();
-  const { venueId: paramVenueId } = useLocalSearchParams<{ venueId: string }>();
-  
-  // State quản lý danh sách sân để chọn
-  const [myVenues, setMyVenues] = useState<{id: string, name: string}[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { venueId } = useLocalSearchParams<{ venueId: string }>();
 
   // State hiển thị chi tiết
   const [venue, setVenue] = useState<VenueDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showFullDesc, setShowFullDesc] = useState(false);
 
-  // 1. Khởi tạo: Load danh sách sân & Xác định sân hiển thị đầu tiên
-  useEffect(() => {
-    const initData = async () => {
-      try {
-        setLoading(true);
-        // Lấy danh sách sân của Owner
-        // @ts-ignore
-        const list = await venueApi.listMyVenues();
-        setMyVenues(list);
-
-        // Xác định ID nào sẽ được chọn ban đầu
-        if (paramVenueId) {
-            setSelectedId(paramVenueId);
-        } else if (list.length > 0) {
-            setSelectedId(list[0].id); // Mặc định chọn cái đầu tiên
-        } else {
-            setLoading(false); // Không có sân nào
-        }
-      } catch (error) {
-        console.error("Init failed", error);
-        setLoading(false);
-      }
-    };
-    initData();
-  }, [paramVenueId]);
-
-  // 2. Khi selectedId thay đổi -> Gọi API lấy chi tiết sân đó
   useEffect(() => {
     const loadDetail = async () => {
-      if (!selectedId) return;
+      if (!venueId) return;
       
       try {
         setLoading(true);
-        console.log("Loading detail for:", selectedId);
-        const data = await venueApi.getVenueDetail(selectedId);
+        console.log("Loading detail for:", venueId);
+        const data = await venueApi.getVenueDetail(venueId);
         const mapped: VenueDetail = {
           ...data,
           courts: (data as any).courts || [],
@@ -100,7 +68,7 @@ export default function VenueDetailScreen() {
     };
 
     loadDetail();
-  }, [selectedId]);
+  }, [venueId]);
 
   if (loading && !venue) {
     return (
@@ -110,18 +78,15 @@ export default function VenueDetailScreen() {
     );
   }
 
-  // UI khi chưa có sân
+  // UI khi chưa có sân hoặc lỗi
   if (!venue && !loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Ionicons name="alert-circle-outline" size={60} color="#ccc" />
-        <Text style={{marginTop: 10, color: '#666'}}>Bạn chưa có sân nào.</Text>
-        <TouchableOpacity 
-            style={[styles.fab, { position: 'relative', marginTop: 20, right: 0, bottom: 0 }]}
-            onPress={() => router.push('/owner/create-venue' as any)}
-        >
-            <Text style={{color: 'white', fontWeight: 'bold'}}>Tạo sân mới</Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <CustomHeader title="Chi tiết địa điểm" showBackButton />
+        <View style={styles.centerContent}>
+          <Ionicons name="alert-circle-outline" size={60} color="#ccc" />
+          <Text style={{marginTop: 10, color: '#666'}}>Không tìm thấy thông tin sân.</Text>
+        </View>
       </View>
     );
   }
@@ -145,68 +110,39 @@ export default function VenueDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <CustomHeader 
+        title={venue?.name || "Chi tiết địa điểm"} 
+        showBackButton 
+        rightIcon={
+            <TouchableOpacity onPress={() => router.push({ pathname: '/owner/edit-venue', params: { id: venueId } })}>
+                <Ionicons name="create-outline" size={24} color={Colors.text} />
+            </TouchableOpacity>
+        }
+      />
       
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         
         {/* HEADER IMAGE */}
-        <View style={styles.headerContainer}>
+        <View style={styles.imageContainer}>
           <Image
             source={{ uri: venue?.imageUrl || "https://via.placeholder.com/400x300" }}
             style={styles.headerImage}
             resizeMode="cover"
           />
-          <View style={styles.headerOverlay} />
-          
-          <View style={styles.topBar}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-                style={styles.iconButton}
-                onPress={() => router.push('/owner/edit-venue')} // Quick Edit
-            >
-              <Ionicons name="pencil" size={20} color="white" />
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* INFO CONTAINER */}
         <View style={styles.infoContainer}>
-          
-          {/* 🔥 NEW: VENUE SELECTOR (Thanh chọn ngang) */}
-          {myVenues.length > 1 && (
-              <View style={styles.selectorWrapper}>
-                  <Text style={styles.selectorLabel}>Chọn sân xem trước:</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
-                      {myVenues.map(v => {
-                          const isActive = v.id === selectedId;
-                          return (
-                              <TouchableOpacity 
-                                  key={v.id} 
-                                  style={[styles.chip, isActive && styles.chipActive]}
-                                  onPress={() => setSelectedId(v.id)}
-                              >
-                                  <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                                      {v.name}
-                                  </Text>
-                              </TouchableOpacity>
-                          )
-                      })}
-                  </ScrollView>
-              </View>
-          )}
-
           <Text style={styles.venueName}>{venue?.name}</Text>
           
           <View style={styles.ratingInfoRow}>
-            <FontAwesome name="star" size={16} color="#00C853" />
+            <FontAwesome name="star" size={16} color={Colors.primary} />
             <Text style={styles.ratingText}>{venue?.avgRating ? venue.avgRating.toFixed(1) : "0.0"}</Text>
             <Text style={styles.reviewCountText}>({venue?.reviewCount || 0} reviews)</Text>
           </View>
 
           <View style={styles.locationRow}>
-            <Ionicons name="location-sharp" size={18} color="#00C853" />
+            <Ionicons name="location-sharp" size={18} color={Colors.primary} />
             <Text style={styles.addressText} numberOfLines={2}>
               {venue?.address}, {venue?.district}, {venue?.city}
             </Text>
@@ -226,7 +162,16 @@ export default function VenueDetailScreen() {
 
         {/* COURTS SECTION */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Available Courts</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Available Courts</Text>
+            <TouchableOpacity 
+              style={styles.addCourtBtn}
+              onPress={() => router.push({ pathname: '/owner/add-court', params: { venueId: venueId } })}
+            >
+              <Ionicons name="add-circle" size={20} color={Colors.primary} />
+              <Text style={styles.addCourtText}>Thêm sân</Text>
+            </TouchableOpacity>
+          </View>
           {venue?.courts && venue.courts.length > 0 ? (
             venue.courts.map((court) => (
               <View key={court.id} style={styles.courtCard}>
@@ -287,7 +232,7 @@ export default function VenueDetailScreen() {
       <TouchableOpacity 
         style={styles.fab}
         activeOpacity={0.9}
-        onPress={() => router.push('/owner/edit-venue')} // Có thể update logic để truyền ID nếu muốn edit đúng sân đang chọn
+        onPress={() => router.push({ pathname: '/owner/edit-venue', params: { id: venueId } })}
       >
         <Ionicons name="pencil" size={24} color="white" />
       </TouchableOpacity>
@@ -299,26 +244,14 @@ export default function VenueDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  centerContent: { flex: 1, justifyContent: "center", alignItems: "center" },
   
-  // Header
-  headerContainer: { height: 250, width: "100%", position: "relative" },
+  imageContainer: { height: 250, width: "100%" },
   headerImage: { width: "100%", height: "100%" },
-  headerOverlay: { position: "absolute", top: 0, left: 0, right: 0, height: 80, backgroundColor: "rgba(0,0,0,0.3)" },
-  topBar: { position: "absolute", top: Platform.OS === 'ios' ? 44 : 20, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 16 },
-  iconButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.3)", justifyContent: "center", alignItems: "center" },
 
   // Info
   infoContainer: { padding: 20, backgroundColor: "white", borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -24 },
   
-  // Selector Styles
-  selectorWrapper: { marginBottom: 16 },
-  selectorLabel: { fontSize: 12, color: '#64748B', marginBottom: 8, fontWeight: '600' },
-  chipsScroll: { flexDirection: 'row' },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#F1F5F9', borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: '#E2E8F0' },
-  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  chipText: { fontSize: 13, color: '#475569', fontWeight: '500' },
-  chipTextActive: { color: 'white', fontWeight: '700' },
-
   venueName: { fontSize: 24, fontWeight: "800", color: "#1E293B", marginBottom: 8 },
   ratingInfoRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   ratingText: { fontSize: 16, fontWeight: "bold", color: "#1E293B", marginHorizontal: 6 },
@@ -326,11 +259,31 @@ const styles = StyleSheet.create({
   locationRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 16 },
   addressText: { fontSize: 15, color: "#475569", marginLeft: 8, flex: 1, lineHeight: 22 },
   descriptionText: { fontSize: 14, color: "#64748B", lineHeight: 22 },
-  readMoreText: { color: "#00C853", fontWeight: "600", marginTop: 4 },
+  readMoreText: { color: Colors.primary, fontWeight: "600", marginTop: 4 },
   
   divider: { height: 8, backgroundColor: "#F1F5F9" },
   sectionContainer: { padding: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: "#1E293B", marginBottom: 16 },
+  sectionHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    marginBottom: 16 
+  },
+  sectionTitle: { fontSize: 18, fontWeight: "700", color: "#1E293B" },
+  addCourtBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  addCourtText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginLeft: 4,
+  },
   emptyText: { color: "#94A3B8", fontStyle: "italic" },
 
   // Courts
@@ -340,14 +293,14 @@ const styles = StyleSheet.create({
   courtName: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
   tagRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sportTag: { backgroundColor: "#E8F5E9", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  sportTagText: { fontSize: 11, color: "#00C853", fontWeight: "700" },
+  sportTagText: { fontSize: 11, color: Colors.primary, fontWeight: "700" },
   courtType: { fontSize: 12, color: "#94A3B8" },
-  priceText: { fontSize: 16, fontWeight: "800", color: "#00C853", alignSelf: "flex-end" },
+  priceText: { fontSize: 16, fontWeight: "800", color: Colors.primary, alignSelf: "flex-end" },
 
   // Reviews
   reviewItem: { flexDirection: "row", marginBottom: 20 },
-  avatarContainer: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#FFD54F", justifyContent: "center", alignItems: "center", marginRight: 12 },
-  avatarText: { fontSize: 18, fontWeight: "bold", color: "#5D4037" },
+  avatarContainer: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#f0f0f0", justifyContent: "center", alignItems: "center", marginRight: 12 },
+  avatarText: { fontSize: 18, fontWeight: "bold", color: Colors.primary },
   reviewContent: { flex: 1 },
   reviewHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   reviewerName: { fontSize: 15, fontWeight: "700", color: "#1E293B" },
@@ -356,5 +309,5 @@ const styles = StyleSheet.create({
   reviewComment: { fontSize: 14, color: "#475569", lineHeight: 20 },
 
   // FAB
-  fab: { position: "absolute", bottom: 30, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: "#00C853", justifyContent: "center", alignItems: "center", shadowColor: "#00C853", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 6 },
+  fab: { position: "absolute", bottom: 30, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, justifyContent: "center", alignItems: "center", shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 6 },
 });

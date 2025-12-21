@@ -27,9 +27,9 @@ interface StatsCardProps {
 
 export default function StatsCard({ bookings, hoursPlayed, favoriteSport, items }: StatsCardProps) {
   const data = items ?? [
-    { label: 'Bookings', value: bookings },
-    { label: 'Hours Played', value: hoursPlayed },
-    { label: 'Favorite Sport', value: favoriteSport, bold: true },
+    { label: 'Lượt đặt', value: bookings },
+    { label: 'Giờ chơi', value: hoursPlayed },
+    { label: 'Môn thể thao yêu thích', value: favoriteSport, bold: true },
   ];
 
   return (

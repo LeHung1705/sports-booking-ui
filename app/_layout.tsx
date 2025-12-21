@@ -1,6 +1,7 @@
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import * as Notifications from "expo-notifications"; // 1. Thêm import này
+import { NotificationProvider } from "@/context/NotificationContext";
 
 // Cấu hình hiển thị thông báo khi App đang mở (Foreground)
 Notifications.setNotificationHandler({
@@ -44,40 +45,42 @@ export default function RootLayout() {
 
   // 3. Phần giao diện Stack GIỮ NGUYÊN 100% như cũ của bạn
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="index" />
-      <Stack.Screen
-        name="(auth)/login"
-        options={{
+    <NotificationProvider>
+      <Stack
+        screenOptions={{
           headerShown: false,
         }}
-      />
-      <Stack.Screen
-        name="(auth)/register"
-        options={{
-          headerShown: true,
-          title: "Đăng ký",
-          headerBackTitle: "Quay lại",
-        }}
-      />
-      <Stack.Screen
-        name="(auth)/forgot-password"
-        options={{
-          headerShown: true,
-          title: "Quên mật khẩu",
-          headerBackTitle: "Quay lại",
-        }}
-      />
-      <Stack.Screen
-        name="(tabs)"
-        options={{
-          headerShown: false,
-        }}
-      />
-    </Stack>
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen
+          name="(auth)/login"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="(auth)/register"
+          options={{
+            headerShown: true,
+            title: "Đăng ký",
+            headerBackTitle: "Quay lại",
+          }}
+        />
+        <Stack.Screen
+          name="(auth)/forgot-password"
+          options={{
+            headerShown: true,
+            title: "Quên mật khẩu",
+            headerBackTitle: "Quay lại",
+          }}
+        />
+        <Stack.Screen
+          name="(tabs)"
+          options={{
+            headerShown: false,
+          }}
+        />
+      </Stack>
+    </NotificationProvider>
   );
 }

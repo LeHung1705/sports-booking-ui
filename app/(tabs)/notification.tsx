@@ -1,98 +1,208 @@
-import React, { useState, useCallback } from 'react';
-import { 
-  View, Text, FlatList, StyleSheet, RefreshControl, 
-  ActivityIndicator, TouchableOpacity 
+import React, { useState, useCallback, useEffect } from 'react';
+import {
+  View, Text, FlatList, StyleSheet, RefreshControl,
+  ActivityIndicator, Pressable, TouchableOpacity
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
+import CustomHeader from '@/components/ui/CustomHeader';
 
-// Định nghĩa kiểu dữ liệu khớp với Backend
-interface NotificationItem {
-  id: string;
-  title: string;
-  body: string;
-  type: 'BOOKING_CREATED' | 'BOOKING_CONFIRMED' | 'REMINDER' | 'SYSTEM';
-  createdAt: string;
-  read: boolean;
-}
+// 👇 1. IMPORT INTERFACE TỪ CONTEXT (Xóa interface khai báo lại ở đây)
+import { useNotification, NotificationItem } from '@/context/NotificationContext';
+
+// 👇 2. ĐƯA CÁC HÀM HELPER RA NGOÀI COMPONENT (Để tránh lỗi dependency useEffect)
+const getNotificationTime = (item: NotificationItem): string | undefined => {
+  return item.created_at || item.createdAt;
+};
+
+const isRead = (item: NotificationItem) => {
+  return item.read || item.is_read || false;
+};
+
+const formatTimeExact = (item: NotificationItem) => {
+  const isoString = getNotificationTime(item);
+  if (!isoString) return '--:-- --/--/----';
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return 'Lỗi ngày';
+
+  const timeStr = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return `${timeStr} ${dateStr}`;
+};
+
+const getIcon = (type: string | undefined) => {
+  switch (type) {
+    case 'BOOKING_CREATED': return { name: 'calendar', color: '#2196F3' };
+    case 'BOOKING_CONFIRMED': return { name: 'checkmark-circle', color: '#4CAF50' };
+    case 'REMINDER': return { name: 'alarm', color: '#FF9800' };
+    case 'BOOKING_CANCELLED': return { name: 'close-circle', color: '#EF4444' };
+    default: return { name: 'notifications', color: '#757575' };
+  }
+};
 
 export default function NotificationsScreen() {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  // Lấy data và hàm từ Context
+  const { notifications, fetchNotifications, markAsRead } = useNotification();
+  
+  const [displayList, setDisplayList] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true); // Loading lần đầu
+  const [refreshing, setRefreshing] = useState(false); // Loading khi kéo xuống
+  const [filterType, setFilterType] = useState<'UNREAD' | 'ALL'>('UNREAD');
 
-  // 1. Hàm gọi API
-  const fetchNotifications = async () => {
-    try {
-      const token = await AsyncStorage.getItem("accessToken");
-      if (!token) return;
+  const [isOwner, setIsOwner] = useState(false);
+  const [roleStr, setRoleStr] = useState<string | null>(null);
+  const router = useRouter();
 
-      // ⚠️ LƯU Ý: Thay IP 192.168.x.x bằng IP máy tính của bạn
-      const res = await axios.get('http://192.168.0.202:8080/api/v1/notifications/my-notifications', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNotifications(res.data);
-    } catch (error) {
-      console.log("Lỗi tải thông báo:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  // Tính số lượng chưa đọc để hiển thị badge trong màn hình (nếu cần)
+  const unreadCount = notifications.filter(item => !isRead(item)).length;
+
+  // 👇 3. LOGIC LỌC (Đã fix lỗi dependency)
+  useEffect(() => {
+    if (filterType === 'UNREAD') {
+      // Vì hàm isRead đã đưa ra ngoài component nên dùng ở đây thoải mái
+      setDisplayList(notifications.filter(item => !isRead(item)));
+    } else {
+      setDisplayList(notifications);
     }
-  };
+  }, [notifications, filterType]); 
 
-  // 2. Tự động load khi vào màn hình
+  // Load data khi vào màn hình
   useFocusEffect(
     useCallback(() => {
-      fetchNotifications();
-    }, [])
+      let isActive = true;
+      const load = async () => {
+        // Chỉ hiện loading xoay xoay nếu danh sách đang rỗng
+        if (notifications.length === 0) setLoading(true);
+        try {
+          await fetchNotifications();
+        } finally {
+          if (isActive) setLoading(false);
+        }
+      };
+      load();
+      return () => { isActive = false; };
+    }, [fetchNotifications, notifications.length])
   );
 
-  // 3. Hàm chọn icon dựa theo Type (Backend trả về)
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'BOOKING_CREATED': return { name: 'calendar', color: '#2196F3' }; // Xanh dương
-      case 'BOOKING_CONFIRMED': return { name: 'checkmark-circle', color: '#4CAF50' }; // Xanh lá
-      case 'REMINDER': return { name: 'alarm', color: '#FF9800' }; // Cam
-      default: return { name: 'notifications', color: '#757575' }; // Xám
+  // Hàm Refresh khi kéo xuống
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchNotifications();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchNotifications]);
+
+  // Load Role (Giữ nguyên logic của bạn)
+  useEffect(() => {
+    const loadRole = async () => {
+      const directRole = (await AsyncStorage.getItem('userRole')) || (await AsyncStorage.getItem('role'));
+      let parsedRole: string | null = directRole;
+      if (!parsedRole) {
+        const rawUser = await AsyncStorage.getItem('user');
+        if (rawUser) {
+          try {
+            const obj = JSON.parse(rawUser);
+            parsedRole = obj?.role || obj?.userRole || null;
+          } catch (_) { parsedRole = null; }
+        }
+      }
+      setRoleStr(parsedRole);
+      setIsOwner(!!parsedRole && /owner/i.test(parsedRole));
+    };
+    loadRole();
+  }, []);
+
+  const handlePressNotification = async (item: NotificationItem) => {
+    if (!isRead(item)) {
+       await markAsRead(item.id);
+    }
+    // Logic điều hướng
+    if (isOwner || (roleStr && /owner/i.test(roleStr))) {
+      router.push('/owner/bookings');
+    } else {
+       // Nếu là user thường thì có thể navigate trang khác hoặc không làm gì
+       // router.push('/(tabs)/history'); 
     }
   };
 
-  // 4. Render từng dòng
   const renderItem = ({ item }: { item: NotificationItem }) => {
     const icon = getIcon(item.type);
-    const time = new Date(item.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'});
+    const displayTime = formatTimeExact(item);
+    const readStatus = isRead(item);
 
     return (
-      <View style={[styles.card, !item.read && styles.unread]}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.card,
+          !readStatus && styles.unread,
+          pressed && styles.cardPressed,
+        ]}
+        onPress={() => handlePressNotification(item)}
+      >
         <View style={styles.iconBox}>
           <Ionicons name={icon.name as any} size={24} color={icon.color} />
         </View>
         <View style={styles.content}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.body}>{item.body}</Text>
-          <Text style={styles.time}>{time}</Text>
+          <View style={styles.rowBetween}>
+            <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+            {!readStatus && <View style={styles.badge}><Text style={styles.badgeText}>Mới</Text></View>}
+          </View>
+          <Text style={styles.body} numberOfLines={2}>{item.body}</Text>
+          <View style={styles.footerRow}>
+            <Ionicons name="time-outline" size={14} color="#9CA3AF" />
+            <Text style={styles.time}>{displayTime}</Text>
+            <View style={styles.dot} />
+            <Text style={styles.linkText}>Xem chi tiết</Text>
+          </View>
         </View>
-      </View>
+      </Pressable>
     );
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Thông báo</Text>
+      <CustomHeader title="Thông báo" showBackButton={false} />
+      
+      {/* --- BỘ LỌC --- */}
+      <View style={styles.filterContainer}>
+         <TouchableOpacity 
+           style={[styles.filterChip, filterType === 'UNREAD' && styles.filterChipActive]}
+           onPress={() => setFilterType('UNREAD')}
+         >
+            <Text style={[styles.filterText, filterType === 'UNREAD' && styles.filterTextActive]}>Chưa đọc</Text>
+            {unreadCount > 0 && (
+               <View style={styles.countBadge}>
+                <Text style={styles.countText}>{unreadCount}</Text>
+               </View>
+            )}
+         </TouchableOpacity>
+
+         <TouchableOpacity 
+           style={[styles.filterChip, filterType === 'ALL' && styles.filterChipActive]}
+           onPress={() => setFilterType('ALL')}
+         >
+            <Text style={[styles.filterText, filterType === 'ALL' && styles.filterTextActive]}>Tất cả</Text>
+         </TouchableOpacity>
+      </View>
+
       {loading ? (
-        <ActivityIndicator size="large" color="#000" style={{marginTop: 20}} />
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 24 }} />
       ) : (
         <FlatList
-          data={notifications}
+          data={displayList}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNotifications(); }} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <View style={{alignItems:'center', marginTop: 50}}>
-              <Ionicons name="notifications-off-outline" size={50} color="#ccc"/>
-              <Text style={{color:'#999', marginTop:10}}>Chưa có thông báo nào</Text>
+              <Ionicons name={filterType === 'UNREAD' ? "checkmark-done-circle-outline" : "file-tray-outline"} size={50} color="#ccc"/>
+              <Text style={{color:'#999', marginTop:10}}>
+                 {filterType === 'UNREAD' ? 'Bạn đã đọc hết thông báo!' : 'Chưa có thông báo nào'}
+              </Text>
             </View>
           }
         />
@@ -102,18 +212,89 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', paddingTop: 50, paddingHorizontal: 15 },
-  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 15, color:'#333' },
-  card: { 
-    flexDirection: 'row', padding: 15, marginBottom: 10, 
-    backgroundColor: '#fff', borderRadius: 10,
-    borderWidth: 1, borderColor: '#eee',
-    elevation: 2, shadowColor:'#000', shadowOpacity:0.05, shadowRadius:2
+  container: { flex: 1, backgroundColor: '#F7F9FB' },
+  card: {
+    flexDirection: 'row',
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#eef1f5',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
-  unread: { backgroundColor: '#F0F8FF', borderColor: '#2196F3' }, // Tin chưa đọc sẽ hơi xanh
-  iconBox: { marginRight: 15, justifyContent:'center' },
-  content: { flex: 1 },
-  title: { fontWeight: 'bold', fontSize: 16, marginBottom: 4, color: '#333' },
-  body: { fontSize: 14, color: '#555', marginBottom: 6 },
-  time: { fontSize: 12, color: '#999', textAlign: 'right' }
+  cardPressed: { opacity: 0.9 },
+  unread: { backgroundColor: '#F2FBF7', borderColor: Colors.primary },
+  iconBox: {
+    marginRight: 14,
+    justifyContent: 'center',
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#F5F7FA',
+    alignItems: 'center',
+  },
+  content: { flex: 1, gap: 4 },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  title: { fontWeight: '700', fontSize: 16, color: '#111827', flex: 1, marginRight: 8 },
+  body: { fontSize: 14, color: '#4B5563', marginBottom: 2 },
+  footerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  time: { fontSize: 12, color: '#9CA3AF' },
+  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#D1D5DB' },
+  linkText: { fontSize: 12, color: Colors.primary, fontWeight: '600' },
+  badge: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+
+  // STYLE FILTER
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    marginTop: 8,
+    gap: 12
+  },
+  filterChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#E5E7EB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary,
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563'
+  },
+  filterTextActive: {
+    color: '#FFF'
+  },
+  countBadge: {
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4
+  },
+  countText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold'
+  }
 });

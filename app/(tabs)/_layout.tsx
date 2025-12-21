@@ -1,41 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
-import { View, Text } from "react-native";
+import { useNotification } from "@/context/NotificationContext";
 
 export default function TabLayout() {
-  // TODO: thay bằng dữ liệu thật từ API/Store
-  const unreadNotifications = 3;
-
-  const renderIconWithBadge = (
-    iconName: keyof typeof Feather.glyphMap,
-    color: string,
-    size: number
-  ) => (
-    <View style={{ width: 28, height: 28, alignItems: "center", justifyContent: "center" }}>
-      <Feather name={iconName} size={22} color={color} />
-      {unreadNotifications > 0 && iconName === "bell" && (
-        <View
-          style={{
-            position: "absolute",
-            top: -2,
-            right: -6,
-            minWidth: 16,
-            height: 16,
-            borderRadius: 8,
-            backgroundColor: "#ef4444",
-            alignItems: "center",
-            justifyContent: "center",
-            paddingHorizontal: 3,
-          }}
-        >
-          <Text style={{ color: "white", fontSize: 10, fontWeight: "700" }}>
-            {unreadNotifications > 9 ? "9+" : unreadNotifications}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
+  const { unreadCount } = useNotification();
 
   return (
     <Tabs
@@ -93,7 +62,15 @@ export default function TabLayout() {
         name="notification"
         options={{
           title: "Thông báo",
-          tabBarIcon: ({ color, size }) => renderIconWithBadge("bell", color, size),
+          tabBarIcon: ({ color }) => <Feather name="bell" size={22} color={color} />,
+          tabBarBadge: unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: "#ef4444",
+            color: "white",
+            fontSize: 10,
+            minWidth: 18,
+            height: 18,
+          },
         }}
       />
     </Tabs>
