@@ -192,12 +192,12 @@ export default function ProfileScreen() {
               <View style={styles.menuCard}>
                 <MenuOption
                   icon="person-outline"
-                  title="Edit Profile"
+                  title="Chỉnh sửa hồ sơ"
                   onPress={() => router.push('/profile/edit')}
                 />
                 <MenuOption
                   icon="lock-closed-outline"
-                  title="Change Password"
+                  title="Đổi mật khẩu"
                   onPress={() => router.push('/profile/change-password')}
                   showBorder={false}
                 />
@@ -209,8 +209,8 @@ export default function ProfileScreen() {
               <View style={styles.menuCard}>
                 <MenuOption
                   icon="time-outline"
-                  title="Booking History"
-                  onPress={() => Alert.alert('Coming Soon', 'Booking history feature will be available soon')}
+                  title="Lịch sử đặt sân"
+                  onPress={() => router.push('/booking/my_bookings')}
                   showBorder={false}
                 />
               </View>

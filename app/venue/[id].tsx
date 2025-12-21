@@ -51,12 +51,8 @@ export default function VenueDetailScreen() {
 
   const handlePressCourt = (court: VenueDetailCourtItem) => {
     router.push({
-      pathname: "/booking/schedule",
-      params: {
-        venueId: id,
-        courtId: court.id,
-        venueName: venue?.name
-      },
+      pathname: "/court/[id]",
+      params: { id: court.id, venueId: id },
     });
   };
 
@@ -135,17 +131,7 @@ export default function VenueDetailScreen() {
             </View>
           )}
 
-          {venue.courts.length > 0 && (
-            <TouchableOpacity
-                style={styles.bookButton}
-                onPress={() => {
-                    // Default to first court or handle logic to choose court
-                    handlePressCourt(venue.courts[0]);
-                }}
-            >
-                <Text style={styles.bookButtonText}>Đặt ngay</Text>
-            </TouchableOpacity>
-          )}
+
         </View>
 
         <View style={styles.section}>
