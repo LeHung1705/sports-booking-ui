@@ -34,7 +34,7 @@ export default function MyVenuesScreen() {
   const renderItem = ({ item }: { item: VenueDetail }) => (
     <TouchableOpacity 
       style={styles.card}
-      onPress={() => router.push(`/owner/edit-venue?id=${item.id}`)}
+      onPress={() => router.push({ pathname: '/owner/VenueDetailScreen', params: { venueId: item.id } })}
     >
       <Image 
         source={{ uri: item.imageUrl || 'https://via.placeholder.com/150' }} 
@@ -54,7 +54,15 @@ export default function MyVenuesScreen() {
 
   return (
     <View style={styles.container}>
-      <CustomHeader title="My Venues" showBackButton />
+      <CustomHeader 
+        title="Địa điểm của tôi" 
+        showBackButton 
+        rightIcon={
+          <TouchableOpacity onPress={() => router.push('/owner/CreateVenueScreen')}>
+            <Ionicons name="add" size={28} color="#333" />
+          </TouchableOpacity>
+        }
+      />
       
       {loading ? (
         <View style={styles.center}>

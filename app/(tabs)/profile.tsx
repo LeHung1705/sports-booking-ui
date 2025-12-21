@@ -16,7 +16,6 @@ import { adminApi } from '../../api/adminApi';
 import { authApi } from '../../api/authApi';
 import { bookingApi } from '../../api/bookingApi';
 import { userApi } from '../../api/userApi';
-import { venueApi } from '../../api/venueApi';
 import { Colors } from '../../constants/Colors';
 import { User } from '../../types/User';
 import { BookingListResponse } from "../../types/booking";
@@ -36,7 +35,6 @@ export default function ProfileScreen() {
   const [pendingBookings, setPendingBookings] = useState<BookingListResponse[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [chartStats, setChartStats] = useState<{ revenue: number; bookings: number; label: string } | null>(null);
-  const [ownerFirstVenueId, setOwnerFirstVenueId] = useState<string | null>(null);
 
   // Admin specific state
   const [adminStats, setAdminStats] = useState<{ users: number; venues: number; pendingVenues: number } | null>(null);
@@ -76,20 +74,6 @@ export default function ProfileScreen() {
     const role = (user?.role || '').toUpperCase();
     if (role.includes('OWNER')) {
       fetchPendingBookings();
-      // Lấy venue đầu tiên của owner để mở chi tiết
-      venueApi
-        .listMyVenues()
-        .then((list) => {
-          if (Array.isArray(list) && list.length > 0) {
-            setOwnerFirstVenueId(list[0].id);
-          } else {
-            setOwnerFirstVenueId(null);
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to load owner venues', err);
-          setOwnerFirstVenueId(null);
-        });
     }
     if (role.includes('ADMIN')) {
       fetchAdminStats();
@@ -117,27 +101,6 @@ export default function ProfileScreen() {
       console.error("Failed to fetch admin stats", error);
     }
   };
-
-  const handleOpenVenueDetail = useCallback(async () => {
-    if (ownerFirstVenueId) {
-      router.push({ pathname: '/owner/VenueDetailScreen', params: { venueId: ownerFirstVenueId } });
-      return;
-    }
-
-    try {
-      const list = await venueApi.listMyVenues();
-      if (Array.isArray(list) && list.length > 0) {
-        const firstId = list[0].id;
-        setOwnerFirstVenueId(firstId);
-        router.push({ pathname: '/owner/VenueDetailScreen', params: { venueId: firstId } });
-      } else {
-        Alert.alert('Chưa có Venue', 'Bạn chưa có sân hoặc chưa lấy được danh sách sân.');
-      }
-    } catch (error) {
-      console.error('Failed to load owner venues', error);
-      Alert.alert('Chưa có Venue', 'Bạn chưa có sân hoặc chưa lấy được danh sách sân.');
-    }
-  }, [ownerFirstVenueId, router]);
 
   const handleConfirmBooking = async (bookingId: string) => {
     setProcessingId(bookingId);
@@ -261,22 +224,6 @@ export default function ProfileScreen() {
         <>
           <RevenueChart onStatsChange={(rev, bks, lbl) => setChartStats({ revenue: rev, bookings: bks, label: lbl })} />
           
-          <View style={styles.menuSection}>
-              <Text style={styles.sectionTitle}>TÀI KHOẢN</Text>
-              <View style={styles.menuCard}>
-                <MenuOption
-                  icon="person-outline"
-                  title="Chỉnh sửa hồ sơ"
-                  onPress={() => router.push('/profile/edit')}
-                />
-                <MenuOption
-                  icon="lock-closed-outline"
-                  title="Đổi mật khẩu"
-                  onPress={() => router.push('/profile/change-password')}
-                  showBorder={false}
-                />
-              </View>
-            </View>
 
           {/* Section Booking Chờ Duyệt của Owner */}
           {pendingBookings.length > 0 && (
@@ -312,16 +259,6 @@ export default function ProfileScreen() {
              </View>
           )}
 
-          <View style={styles.menuSection}>
-            <Text style={styles.sectionTitle}>HOẠT ĐỘNG CỦA TÔI</Text>
-            <View style={styles.menuCard}>
-              <MenuOption
-                icon="time-outline"
-                title="Lịch sử đặt sân của tôi"
-                onPress={() => router.push('/booking/my_bookings')}
-              />
-            </View>
-          </View>
 
           <View style={styles.menuSection}>
             <Text style={styles.sectionTitle}>QUẢN LÝ SÂN BÃI</Text>
@@ -338,35 +275,8 @@ export default function ProfileScreen() {
               />
               <MenuOption
                 icon="business-outline"
-                title="My Venue Details"
-                onPress={handleOpenVenueDetail}
-              />
-              <MenuOption
-                icon="add-circle-outline"
-                title="Tạo địa điểm mới"
-                onPress={() => router.push('/owner/CreateVenueScreen')}
-              />
-              <MenuOption
-                icon="create-outline"
-                title="Edit Venue Info"
-                onPress={() => router.push('/owner/edit-venue')}
-                showBorder={false}
-              />
-            </View>
-          </View>
-
-          <View style={styles.menuSection}>
-            <Text style={styles.sectionTitle}>HỆ THỐNG SÂN</Text>
-            <View style={styles.menuCard}>
-              <MenuOption
-                icon="grid-outline"
-                title="Court List"
-                onPress={() => router.push('/owner/court-list')}
-              />
-              <MenuOption
-                icon="add-outline"
-                title="Thêm sân mới"
-                onPress={() => router.push('/owner/add-court')}
+                title="Sân của tôi"
+                onPress={() => router.push('/owner/my-venues')}
                 showBorder={false}
               />
             </View>
@@ -388,6 +298,28 @@ export default function ProfileScreen() {
               />
             </View>
           </View>
+
+          <View style={styles.menuSection}>
+              <Text style={styles.sectionTitle}>TÀI KHOẢN</Text>
+              <View style={styles.menuCard}>
+                <MenuOption
+                  icon="person-outline"
+                  title="Chỉnh sửa hồ sơ"
+                  onPress={() => router.push('/profile/edit')}
+                />
+                <MenuOption
+                  icon="lock-closed-outline"
+                  title="Đổi mật khẩu"
+                  onPress={() => router.push('/profile/change-password')}
+                />
+                <MenuOption
+                  icon="time-outline"
+                  title="Lịch sử đặt sân"
+                  onPress={() => router.push('/booking/my_bookings')}
+                  showBorder={false}
+                />
+              </View>
+            </View>
         </>
       );
     }

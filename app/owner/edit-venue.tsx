@@ -3,6 +3,8 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,22 +12,20 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Colors } from "../../constants/Colors";
 import { venueApi } from "../../api/venueApi";
-import type { VenueDetail, VenueListItem, VenueUpdateRequest } from "../../types/venue";
+import type { VenueDetail, VenueUpdateRequest } from "../../types/venue";
 import CustomHeader from "@/components/ui/CustomHeader";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function EditVenueScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [venueOptions, setVenueOptions] = useState<VenueListItem[]>([]);
-  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   const [venueDetail, setVenueDetail] = useState<VenueDetail | null>(null);
-
-  const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -39,42 +39,22 @@ export default function EditVenueScreen() {
   const [imageUrl, setImageUrl] = useState("");
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
+  
+  // Bank Info State
+  const [bankBin, setBankBin] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [bankAccountName, setBankAccountName] = useState("");
+
   const [geocoding, setGeocoding] = useState(false);
   const placeholderImage = "https://via.placeholder.com/800x400.png?text=Venue+Image";
 
-  // 1. Load danh sách sân của Owner
+  // 1. Load chi tiết khi có ID
   useEffect(() => {
-    const loadMyVenues = async () => {
-      try {
-        setLoadingList(true);
-        // Gọi API lấy danh sách sân của tôi
-        const data = await venueApi.listMyVenues(); 
-        setVenueOptions(data);
-
-        // Tự động chọn sân đầu tiên nếu có
-        if (data.length > 0) {
-          setSelectedVenueId(data[0].id);
-        } else {
-          setSelectedVenueId(null);
-          setVenueDetail(null);
-        }
-      } catch (error) {
-        console.error("Failed to load venues", error);
-        Alert.alert("Lỗi", "Không tải được danh sách sân của bạn.");
-      } finally {
-        setLoadingList(false);
-      }
-    };
-
-    loadMyVenues();
-  }, []);
-
-  // 2. Load chi tiết khi chọn ID
-  useEffect(() => {
-    const loadDetail = async (id: string) => {
+    const loadDetail = async (venueId: string) => {
       try {
         setLoadingDetail(true);
-        const detail = await venueApi.getVenueDetail(id);
+        const detail = await venueApi.getVenueDetail(venueId);
         setVenueDetail(detail);
         
         // Fill data vào form
@@ -87,6 +67,13 @@ export default function EditVenueScreen() {
         setImageUrl(detail.imageUrl || "");
         setLatitude(detail.lat ?? null);
         setLongitude(detail.lng ?? null);
+
+        // Fill bank info
+        setBankBin(detail.bankBin || "");
+        setBankName(detail.bankName || "");
+        setBankAccountNumber(detail.bankAccountNumber || "");
+        setBankAccountName(detail.bankAccountName || "");
+
       } catch (error) {
         console.error("Failed to load venue detail", error);
         Alert.alert("Lỗi", "Không tải được thông tin sân.");
@@ -95,15 +82,18 @@ export default function EditVenueScreen() {
       }
     };
 
-    if (selectedVenueId) {
-      loadDetail(selectedVenueId);
+    if (id) {
+      loadDetail(id);
+    } else {
+        Alert.alert("Lỗi", "Không tìm thấy thông tin sân cần chỉnh sửa.");
+        router.back();
     }
-  }, [selectedVenueId]);
+  }, [id]);
 
-  // 3. Hàm Save (ĐÃ SỬA: Gọi API thật)
+  // 2. Hàm Save
   const handleSave = async () => {
-    if (!selectedVenueId) {
-      Alert.alert("Lỗi", "Vui lòng chọn sân trước khi lưu.");
+    if (!id) {
+      Alert.alert("Lỗi", "Không tìm thấy thông tin sân.");
       return;
     }
 
@@ -118,22 +108,20 @@ export default function EditVenueScreen() {
       imageUrl: imageUrl?.trim(),
       lat: latitude ?? undefined,
       lng: longitude ?? undefined,
-      // Các trường bank nếu cần thiết thì thêm vào state, hiện tại để trống
+      bankBin: bankBin.trim(),
+      bankName: bankName.trim(),
+      bankAccountNumber: bankAccountNumber.trim(),
+      bankAccountName: bankAccountName.trim(),
     };
 
     setSaving(true);
     try {
-      // 👇 GỌI API UPDATE THẬT SỰ
-      await venueApi.updateVenue(selectedVenueId, payload);
+      await venueApi.updateVenue(id, payload);
       
       Alert.alert("Thành công", "Thông tin sân đã được cập nhật!", [
-        { text: "OK" } // Hoặc navigate đi đâu đó nếu muốn
+        { text: "OK", onPress: () => router.back() }
       ]);
       
-      // Refresh lại data mới nhất để đảm bảo đồng bộ
-      const detail = await venueApi.getVenueDetail(selectedVenueId);
-      setVenueDetail(detail);
-
     } catch (err: any) {
       console.error("Update venue failed", err);
       const msg = err?.response?.data?.message || "Không thể lưu thay đổi. Vui lòng thử lại.";
@@ -166,7 +154,6 @@ export default function EditVenueScreen() {
     setImageUrl("");
   };
 
-  // Khi đổi địa chỉ/quận/thành phố, xóa tọa độ cũ để người dùng bấm geocode lại.
   const handleAddressChange = (val: string) => {
     setAddress(val);
     setLatitude(null);
@@ -210,7 +197,8 @@ export default function EditVenueScreen() {
       const { latitude: latValue, longitude: lngValue } = results[0];
       setLatitude(latValue);
       setLongitude(lngValue);
-      Alert.alert("Đã lấy tọa độ", `Lat: ${latValue.toFixed(6)}\nLng: ${lngValue.toFixed(6)}`);
+      Alert.alert("Đã lấy tọa độ", `Lat: ${latValue.toFixed(6)}
+Lng: ${lngValue.toFixed(6)}`);
     } catch (error) {
       console.error("Geocode address failed", error);
       Alert.alert("Lỗi", "Không thể lấy tọa độ. Hãy thử lại sau.");
@@ -221,144 +209,125 @@ export default function EditVenueScreen() {
 
   return (
     <View style={styles.screen}>
-      <CustomHeader title="Edit Venue Info" showBackButton onBackPress={() => router.back()} />
+      <CustomHeader title="Chỉnh sửa thông tin sân" showBackButton />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Chọn sân cần chỉnh sửa</Text>
-          {loadingList ? (
-            <View style={styles.centerRow}>
-              <ActivityIndicator color={Colors.primary} />
-              <Text style={styles.muted}>Đang tải danh sách sân...</Text>
-            </View>
-          ) : venueOptions.length === 0 ? (
-            <Text style={styles.muted}>Bạn chưa có sân nào. Hãy tạo sân trước.</Text>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
-              {venueOptions.map((venue) => {
-                const selected = venue.id === selectedVenueId;
-                return (
-                  <TouchableOpacity
-                    key={venue.id}
-                    style={[styles.venueChip, selected && styles.venueChipSelected]}
-                    onPress={() => setSelectedVenueId(venue.id)}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.venueChipTitle, selected && styles.venueChipTitleActive]} numberOfLines={1}>
-                      {venue.name}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
+            {loadingDetail ? (
+                <View style={styles.centerRow}>
+                <ActivityIndicator color={Colors.primary} />
+                <Text style={styles.muted}>Đang tải chi tiết sân...</Text>
+                </View>
+            ) : (
+                <>
+                <LabeledInput label="Tên sân" value={name} onChangeText={setName} placeholder="Nhập tên sân" />
+                <LabeledInput label="Số điện thoại" value={phone} onChangeText={setPhone} placeholder="Số liên hệ" keyboardType="phone-pad" />
+                <LabeledInput label="Địa chỉ" value={address} onChangeText={handleAddressChange} placeholder="Số nhà, đường" />
+                <View style={styles.inlineRow}>
+                    <View style={styles.inlineHalf}>
+                    <LabeledInput label="Quận/Huyện" value={district} onChangeText={handleDistrictChange} placeholder="VD: Quận 1" />
+                    </View>
+                    <View style={styles.inlineHalf}>
+                    <LabeledInput label="Thành phố" value={city} onChangeText={handleCityChange} placeholder="VD: TP. HCM" />
+                    </View>
+                </View>
+                <View style={styles.gpsRow}>
+                    <View style={{ flex: 1 }}>
+                    <Text style={styles.label}>Tọa độ GPS</Text>
+                    <Text style={styles.coordText}>
+                        {latitude != null ? latitude.toFixed(6) : "--"} , {longitude != null ? longitude.toFixed(6) : "--"}
                     </Text>
-                    <Text style={[styles.venueChipSub, selected && styles.venueChipSubActive]} numberOfLines={1}>
-                      {venue.district || venue.city || "Địa chỉ chưa có"}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
-          {loadingDetail ? (
-            <View style={styles.centerRow}>
-              <ActivityIndicator color={Colors.primary} />
-              <Text style={styles.muted}>Đang tải chi tiết sân...</Text>
-            </View>
-          ) : (
-            <>
-              <LabeledInput label="Tên sân" value={name} onChangeText={setName} placeholder="Nhập tên sân" />
-              <LabeledInput label="Số điện thoại" value={phone} onChangeText={setPhone} placeholder="Số liên hệ" keyboardType="phone-pad" />
-              <LabeledInput label="Địa chỉ" value={address} onChangeText={handleAddressChange} placeholder="Số nhà, đường" />
-              <View style={styles.inlineRow}>
-                <View style={styles.inlineHalf}>
-                  <LabeledInput label="Quận/Huyện" value={district} onChangeText={handleDistrictChange} placeholder="VD: Quận 1" />
+                    <Text style={styles.helperText}>Nhập địa chỉ và bấm "Lấy GPS" để geocode.</Text>
+                    </View>
+                    <TouchableOpacity
+                    style={[styles.geoBtn, geocoding && styles.geoBtnDisabled]}
+                    onPress={handleGeocodeAddress}
+                    disabled={geocoding}
+                    activeOpacity={0.9}
+                    >
+                    {geocoding ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.geoBtnText}>Lấy GPS</Text>}
+                    </TouchableOpacity>
                 </View>
-                <View style={styles.inlineHalf}>
-                  <LabeledInput label="Thành phố" value={city} onChangeText={handleCityChange} placeholder="VD: TP. HCM" />
-                </View>
-              </View>
-              <View style={styles.gpsRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>Tọa độ GPS</Text>
-                  <Text style={styles.coordText}>
-                    {latitude != null ? latitude.toFixed(6) : "--"} , {longitude != null ? longitude.toFixed(6) : "--"}
-                  </Text>
-                  <Text style={styles.helperText}>Nhập địa chỉ và bấm "Lấy GPS" để geocode.</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.geoBtn, geocoding && styles.geoBtnDisabled]}
-                  onPress={handleGeocodeAddress}
-                  disabled={geocoding}
-                  activeOpacity={0.9}
-                >
-                  {geocoding ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.geoBtnText}>Lấy GPS</Text>}
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.label}>Ảnh đại diện</Text>
-              <View style={styles.imageRow}>
-                <Image
-                  source={{ uri: imageUrl || placeholderImage }}
-                  style={styles.imagePreview}
-                />
-                <View style={{ flex: 1 }}>
-                  <TouchableOpacity style={styles.pickBtn} onPress={handlePickImage}>
-                    <Text style={styles.pickBtnText}>Chọn ảnh từ thư viện</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.clearBtn} onPress={handleClearImage}>
-                    <Text style={styles.clearBtnText}>Xóa ảnh</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.helperText}>Có thể dán URL hoặc chọn ảnh; nếu chọn ảnh cục bộ, bạn cần upload lên server/CDN để backend đọc được.</Text>
-                  <View style={[styles.inputRowSoft, { marginTop: 8 }]}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="https://..."
-                      placeholderTextColor={Colors.textSecondary}
-                      value={imageUrl}
-                      onChangeText={setImageUrl}
-                      autoCapitalize="none"
+                <Text style={styles.label}>Ảnh đại diện</Text>
+                <View style={styles.imageRow}>
+                    <Image
+                    source={{ uri: imageUrl || placeholderImage }}
+                    style={styles.imagePreview}
                     />
-                  </View>
+                    <View style={{ flex: 1 }}>
+                    <TouchableOpacity style={styles.pickBtn} onPress={handlePickImage}>
+                        <Text style={styles.pickBtnText}>Chọn ảnh từ thư viện</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.clearBtn} onPress={handleClearImage}>
+                        <Text style={styles.clearBtnText}>Xóa ảnh</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.helperText}>Có thể dán URL hoặc chọn ảnh.</Text>
+                    <View style={[styles.inputRowSoft, { marginTop: 8 }]}>
+                        <TextInput
+                        style={styles.input}
+                        placeholder="https://..."
+                        placeholderTextColor={Colors.textSecondary}
+                        value={imageUrl}
+                        onChangeText={setImageUrl}
+                        autoCapitalize="none"
+                        />
+                    </View>
+                    </View>
                 </View>
-              </View>
-              <LabeledInput
-                label="Mô tả ngắn"
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Điểm mạnh, tiện ích, lưu ý cho khách"
-                multiline
-              />
-            </>
-          )}
-        </View>
+                <LabeledInput
+                    label="Mô tả ngắn"
+                    value={description}
+                    onChangeText={setDescription}
+                    placeholder="Điểm mạnh, tiện ích, lưu ý cho khách"
+                    multiline
+                />
+                </>
+            )}
+            </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Sân con & giá tham khảo</Text>
-          {currentCourts.length === 0 ? (
-            <Text style={styles.muted}>Chưa có sân con nào được khai báo.</Text>
-          ) : (
-            currentCourts.map((court) => (
-              <View key={court.id} style={styles.courtRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.courtName}>{court.name}</Text>
-                  <Text style={styles.courtMeta}>{court.sport || "SPORT"}</Text>
-                </View>
-                <View>
-                  <Text style={styles.priceTag}>{court.pricePerHour?.toLocaleString("vi-VN") || "-"} đ/h</Text>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
+            {/* Bank Info Section */}
+            <View style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Thông tin ngân hàng</Text>
+                <LabeledInput label="Mã BIN (e.g. 970422)" value={bankBin} onChangeText={setBankBin} keyboardType="number-pad" />
+                <LabeledInput label="Tên ngân hàng" value={bankName} onChangeText={setBankName} />
+                <LabeledInput label="Số tài khoản" value={bankAccountNumber} onChangeText={setBankAccountNumber} keyboardType="number-pad" />
+                <LabeledInput label="Tên chủ tài khoản" value={bankAccountName} onChangeText={setBankAccountName} autoCapitalize="characters" />
+            </View>
 
-        <TouchableOpacity
-          style={[styles.saveButton, (saving || loadingDetail) && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving || loadingDetail}
-          activeOpacity={0.88}
-        >
-          {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.saveButtonText}>Lưu thay đổi</Text>}
-        </TouchableOpacity>
-      </ScrollView>
+            <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Sân con & giá tham khảo</Text>
+            {currentCourts.length === 0 ? (
+                <Text style={styles.muted}>Chưa có sân con nào được khai báo.</Text>
+            ) : (
+                currentCourts.map((court) => (
+                <View key={court.id} style={styles.courtRow}>
+                    <View style={{ flex: 1 }}>
+                    <Text style={styles.courtName}>{court.name}</Text>
+                    <Text style={styles.courtMeta}>{court.sport || "SPORT"}</Text>
+                    </View>
+                    <View>
+                    <Text style={styles.priceTag}>{court.pricePerHour?.toLocaleString("vi-VN") || "-"} đ/h</Text>
+                    </View>
+                </View>
+                ))
+            )}
+            </View>
+
+            <TouchableOpacity
+            style={[styles.saveButton, (saving || loadingDetail) && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={saving || loadingDetail}
+            activeOpacity={0.88}
+            >
+            {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.saveButtonText}>Lưu thay đổi</Text>}
+            </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -371,9 +340,11 @@ interface LabeledInputProps {
   helperText?: string;
   keyboardType?: "default" | "number-pad" | "decimal-pad" | "numeric" | "email-address" | "phone-pad";
   multiline?: boolean;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
 }
 
-function LabeledInput({ label, value, onChangeText, placeholder, helperText, keyboardType = "default", multiline }: LabeledInputProps) {
+function LabeledInput({ label, value, onChangeText, placeholder, helperText, keyboardType = "default", multiline, autoCapitalize }:
+ LabeledInputProps) {
   return (
     <View style={styles.inputGroup}>
       <Text style={styles.label}>{label}</Text>
@@ -386,6 +357,7 @@ function LabeledInput({ label, value, onChangeText, placeholder, helperText, key
           onChangeText={onChangeText}
           keyboardType={keyboardType}
           multiline={multiline}
+          autoCapitalize={autoCapitalize}
         />
       </View>
       {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
@@ -464,38 +436,6 @@ const styles = StyleSheet.create({
   muted: {
     color: Colors.textSecondary,
     marginTop: 6,
-  },
-  chipsRow: {
-    flexGrow: 0,
-  },
-  venueChip: {
-    width: 200,
-    backgroundColor: "#f1f5f9",
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  venueChipSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  venueChipTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: Colors.text,
-  },
-  venueChipTitleActive: {
-    color: Colors.white,
-  },
-  venueChipSub: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginTop: 4,
-  },
-  venueChipSubActive: {
-    color: "#d8f3e7",
   },
   inputGroup: {
     marginBottom: 14,
