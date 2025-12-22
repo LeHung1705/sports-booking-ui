@@ -197,11 +197,11 @@ export default function BookingDetailScreen() {
                         <Text style={styles.sectionTitle}>Payment</Text>
                         <View style={styles.row}>
                             <Ionicons name="card-outline" size={20} color="#666" />
-                            <Text style={styles.infoText}>Amount: {booking.payment.amount?.toLocaleString('vi-VN')} VND</Text>
+                            <Text style={styles.infoText}>Amount: {Number(booking.payment.amount ?? 0).toLocaleString('vi-VN')} VND</Text>
                         </View>
                         <View style={styles.row}>
                             <Ionicons name="information-circle-outline" size={20} color="#666" />
-                            <Text style={styles.infoText}>Status: {booking.payment.status}</Text>
+                            <Text style={styles.infoText}>Status: {(booking.payment as any)?.status ?? 'N/A'}</Text>
                         </View>
                     </View>
                 )}

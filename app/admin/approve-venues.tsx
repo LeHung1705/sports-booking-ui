@@ -1,13 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, FlatList, StyleSheet, Alert, ActivityIndicator, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { adminApi, PendingVenueItem } from '../../api/adminApi';
 import { Colors } from '../../constants/Colors';
 import CustomHeader from '../../components/ui/CustomHeader';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 export default function ApproveVenuesScreen() {
+  const router = useRouter();
   const [venues, setVenues] = useState<PendingVenueItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  
+  const { highlightId } = useLocalSearchParams<{ highlightId: string }>();
 
   useEffect(() => {
     fetchPendingVenues();
@@ -15,7 +20,6 @@ export default function ApproveVenuesScreen() {
 
   const fetchPendingVenues = async () => {
     try {
-      setLoading(true);
       const data = await adminApi.getPendingVenues();
       setVenues(data);
     } catch (error) {
@@ -23,25 +27,31 @@ export default function ApproveVenuesScreen() {
       Alert.alert("Error", "Could not fetch pending venues.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchPendingVenues();
+  }, []);
+
   const handleApprove = async (id: string, name: string) => {
     Alert.alert(
-      "Confirm Approval",
-      `Are you sure you want to approve venue "${name}"?`,
+      "Xác nhận duyệt",
+      `Bạn có chắc muốn duyệt địa điểm "${name}"?`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "Hủy", style: "cancel" },
         {
-          text: "Approve",
+          text: "Duyệt",
           onPress: async () => {
             setProcessingId(id);
             try {
               await adminApi.approveVenue(id);
-              Alert.alert("Success", "Venue approved successfully.");
+              Alert.alert("Thành công", "Đã duyệt địa điểm.");
               fetchPendingVenues();
             } catch (error) {
-              Alert.alert("Error", "Failed to approve venue.");
+              Alert.alert("Lỗi", "Không thể duyệt địa điểm.");
             } finally {
               setProcessingId(null);
             }
@@ -51,36 +61,78 @@ export default function ApproveVenuesScreen() {
     );
   };
 
-  const renderItem = ({ item }: { item: PendingVenueItem }) => (
-    <View style={styles.card}>
+  const handleReject = async (id: string, name: string) => {
+    Alert.alert(
+      "Xác nhận từ chối",
+      `Bạn có chắc muốn từ chối và XÓA địa điểm "${name}"? Hành động này không thể hoàn tác.`,
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Từ chối & Xóa",
+          style: 'destructive',
+          onPress: async () => {
+            setProcessingId(id);
+            try {
+              await adminApi.rejectVenue(id);
+              Alert.alert("Thành công", "Đã từ chối và xóa địa điểm.");
+              fetchPendingVenues();
+            } catch (error) {
+              Alert.alert("Lỗi", "Không thể từ chối địa điểm.");
+            } finally {
+              setProcessingId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderItem = ({ item }: { item: PendingVenueItem }) => {
+    const isHighlighted = highlightId === item.id;
+    return (
+    <View style={[styles.card, isHighlighted && styles.highlightedCard]}>
         <View style={styles.cardHeader}>
             <Text style={styles.venueName}>{item.name}</Text>
             <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>Pending</Text>
+                <Text style={styles.statusText}>Chờ duyệt</Text>
             </View>
         </View>
         
         <Text style={styles.infoText}>📍 {item.address}, {item.district}, {item.city}</Text>
-        <Text style={styles.infoText}>👤 Owner: {item.ownerName}</Text>
+        <Text style={styles.infoText}>👤 Chủ sân: {item.ownerName}</Text>
         <Text style={styles.infoText}>📧 {item.ownerEmail}</Text>
 
-        <TouchableOpacity 
-            style={[styles.approveButton, processingId === item.id && styles.disabledButton]}
-            onPress={() => handleApprove(item.id, item.name)}
-            disabled={processingId === item.id}
-        >
-            {processingId === item.id ? (
-                <ActivityIndicator color="#fff" size="small" />
-            ) : (
-                <Text style={styles.approveButtonText}>Approve Venue</Text>
-            )}
+        <TouchableOpacity onPress={() => router.push(`/venue/${item.id}`)} style={{alignSelf: 'flex-start', marginVertical: 8}}>
+            <Text style={{color: Colors.primary, fontWeight: '600'}}>Xem chi tiết ›</Text>
         </TouchableOpacity>
+
+        <View style={styles.actionRow}>
+            <TouchableOpacity 
+                style={[styles.rejectButton, processingId === item.id && styles.disabledButton]}
+                onPress={() => handleReject(item.id, item.name)}
+                disabled={processingId === item.id}
+            >
+                <Text style={styles.rejectButtonText}>Từ chối</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+                style={[styles.approveButton, processingId === item.id && styles.disabledButton]}
+                onPress={() => handleApprove(item.id, item.name)}
+                disabled={processingId === item.id}
+            >
+                {processingId === item.id ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                    <Text style={styles.approveButtonText}>Duyệt</Text>
+                )}
+            </TouchableOpacity>
+        </View>
     </View>
-  );
+  )};
 
   return (
     <View style={styles.container}>
-      <CustomHeader title="Approve Venues" showBackButton={true} />
+      <CustomHeader title="Duyệt địa điểm" showBackButton={true} />
       
       {loading ? (
         <View style={styles.center}>
@@ -88,7 +140,7 @@ export default function ApproveVenuesScreen() {
         </View>
       ) : venues.length === 0 ? (
         <View style={styles.center}>
-            <Text style={styles.emptyText}>No pending venues found.</Text>
+            <Text style={styles.emptyText}>Không có địa điểm nào chờ duyệt.</Text>
         </View>
       ) : (
         <FlatList
@@ -96,6 +148,7 @@ export default function ApproveVenuesScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />
       )}
     </View>
@@ -126,6 +179,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  highlightedCard: {
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    backgroundColor: '#F0FDF4', // Light green bg
+  },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -154,12 +212,29 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 4,
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
   approveButton: {
+    flex: 1,
     backgroundColor: Colors.primary,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
-    marginTop: 12,
+  },
+  rejectButton: {
+    flex: 1,
+    backgroundColor: '#EF4444', // Red
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  rejectButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   disabledButton: {
     backgroundColor: '#A0A0A0',

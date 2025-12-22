@@ -1,7 +1,7 @@
 import CustomHeader from '@/components/ui/CustomHeader';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { bookingApi } from '../../api/bookingApi';
 import { Colors } from '../../constants/Colors';
@@ -13,6 +13,20 @@ export default function MyBookingsScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<'CONFIRMED' | 'AWAITING_CONFIRM' | 'CANCELED'>('CONFIRMED');
+    
+    const { highlightId } = useLocalSearchParams<{ highlightId: string }>();
+
+    // Effect to switch tab if highlightId is present
+    useEffect(() => {
+        if (highlightId && bookings.length > 0) {
+            const target = bookings.find(b => b.id === highlightId);
+            if (target) {
+                if (['CONFIRMED', 'COMPLETED'].includes(target.status)) setSelectedCategory('CONFIRMED');
+                else if (['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(target.status)) setSelectedCategory('AWAITING_CONFIRM');
+                else setSelectedCategory('CANCELED');
+            }
+        }
+    }, [highlightId, bookings]);
 
     const fetchBookings = async () => {
         try {
@@ -74,9 +88,11 @@ export default function MyBookingsScreen() {
         });
     };
 
-    const renderItem = ({ item }: { item: BookingListResponse }) => (
+    const renderItem = ({ item }: { item: BookingListResponse }) => {
+        const isHighlighted = highlightId === item.id;
+        return (
         <TouchableOpacity 
-            style={styles.card}
+            style={[styles.card, isHighlighted && styles.highlightedCard]}
             onPress={() => {
                 if (item.status === 'PENDING_PAYMENT') {
                     router.push({
@@ -112,7 +128,7 @@ export default function MyBookingsScreen() {
                 <Text style={styles.price}>{item.totalPrice?.toLocaleString('vi-VN')} VND</Text>
             </View>
         </TouchableOpacity>
-    );
+    )};
 
     return (
         <View style={styles.container}>
@@ -203,6 +219,11 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
+    },
+    highlightedCard: {
+        borderWidth: 2,
+        borderColor: Colors.primary,
+        backgroundColor: '#E8F5E9',
     },
     cardHeader: {
         flexDirection: 'row',

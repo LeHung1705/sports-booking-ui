@@ -29,20 +29,28 @@ export const adminApi = {
 
   getPendingVenues: async (): Promise<PendingVenueItem[]> => {
     const response = await apiClient.get("/admin/venues/pending");
-    return response.data.map((v: any) => ({
+    console.log("Admin Pending Venues Response:", response.data);
+    
+    const data = Array.isArray(response.data) ? response.data : [];
+    
+    return data.map((v: any) => ({
         id: v.id,
         name: v.name,
         address: v.address,
         district: v.district,
         city: v.city,
         imageUrl: v.imageUrl,
-        ownerName: v.owner?.fullName || "Unknown",
-        ownerEmail: v.owner?.email || "Unknown",
+        ownerName: v.ownerName || v.owner?.fullName || "Unknown",
+        ownerEmail: v.ownerEmail || v.owner?.email || "Unknown",
     }));
   },
 
   approveVenue: async (venueId: string): Promise<void> => {
     await apiClient.put(`/admin/venues/${venueId}/approve`);
+  },
+
+  rejectVenue: async (venueId: string): Promise<void> => {
+    await apiClient.put(`/admin/venues/${venueId}/reject`);
   },
 
   getAllUsers: async (): Promise<AdminUserItem[]> => {

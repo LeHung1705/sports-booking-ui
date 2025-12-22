@@ -1,8 +1,11 @@
+import { useNotification } from "@/context/NotificationContext";
 import { Feather } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
 
 export default function TabLayout() {
+  const { unreadCount } = useNotification();
+
   return (
     <Tabs
       screenOptions={{
@@ -47,15 +50,31 @@ export default function TabLayout() {
         }}
       />
 
+<Tabs.Screen
+        name="notification"
+        options={{
+          title: "Thông báo",
+          tabBarIcon: ({ color }) => <Feather name="bell" size={22} color={color} />,
+          tabBarBadge: unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: "#ef4444",
+            color: "white",
+            fontSize: 10,
+            minWidth: 18,
+            height: 18,
+          },
+        }}
+      />
+      
       <Tabs.Screen
         name="profile"
         options={{
           title: "Tài khoản",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={22} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Feather name="user" size={22} color={color} />,
         }}
       />
+
+
     </Tabs>
   );
 }
