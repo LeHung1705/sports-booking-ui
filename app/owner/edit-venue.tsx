@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -21,6 +23,25 @@ import CustomHeader from "@/components/ui/CustomHeader";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
+
+const BANKS = [
+  { bin: "970436", shortName: "Vietcombank" },
+  { bin: "970422", shortName: "MBBank" },
+  { bin: "970407", shortName: "Techcombank" },
+  { bin: "970416", shortName: "ACB" },
+  { bin: "970415", shortName: "VietinBank" },
+  { bin: "970418", shortName: "BIDV" },
+  { bin: "970423", shortName: "TPBank" },
+  { bin: "970432", shortName: "VPBank" },
+  { bin: "970403", shortName: "Sacombank" },
+  { bin: "970405", shortName: "Agribank" },
+  { bin: "970441", shortName: "VIB" },
+  { bin: "970443", shortName: "SHB" },
+  { bin: "970429", shortName: "SCB" },
+  { bin: "970452", shortName: "KienLongBank" },
+  { bin: "970437", shortName: "HDBank" }
+];
 
 export default function EditVenueScreen() {
   const router = useRouter();
@@ -46,6 +67,13 @@ export default function EditVenueScreen() {
   const [bankName, setBankName] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [bankAccountName, setBankAccountName] = useState("");
+  const [isBankModalVisible, setIsBankModalVisible] = useState(false);
+  const [searchBank, setSearchBank] = useState("");
+
+  // Operating Hours State
+  const [openTime, setOpenTime] = useState<Date>(new Date(new Date().setHours(8, 0, 0, 0)));
+  const [closeTime, setCloseTime] = useState<Date>(new Date(new Date().setHours(22, 0, 0, 0)));
+  const [activePicker, setActivePicker] = useState<'open' | 'close' | null>(null);
 
   const [geocoding, setGeocoding] = useState(false);
   const placeholderImage = "https://via.placeholder.com/800x400.png?text=Venue+Image";
@@ -75,6 +103,20 @@ export default function EditVenueScreen() {
         setBankAccountNumber(detail.bankAccountNumber || "");
         setBankAccountName(detail.bankAccountName || "");
 
+        // Fill operating hours
+        if (detail.openTime) {
+          const [h, m] = detail.openTime.split(':').map(Number);
+          const d = new Date();
+          d.setHours(h, m, 0, 0);
+          setOpenTime(d);
+        }
+        if (detail.closeTime) {
+          const [h, m] = detail.closeTime.split(':').map(Number);
+          const d = new Date();
+          d.setHours(h, m, 0, 0);
+          setCloseTime(d);
+        }
+
       } catch (error) {
         console.error("Failed to load venue detail", error);
         Alert.alert("Lỗi", "Không tải được thông tin sân.");
@@ -90,6 +132,33 @@ export default function EditVenueScreen() {
         router.back();
     }
   }, [id]);
+
+  const filteredBanks = BANKS.filter(b => 
+    b.shortName.toLowerCase().includes(searchBank.toLowerCase()) || 
+    b.bin.includes(searchBank)
+  );
+
+  const handleSelectBank = (bank: typeof BANKS[0]) => {
+    setBankName(bank.shortName);
+    setBankBin(bank.bin);
+    setIsBankModalVisible(false);
+  };
+
+  const onChangeTime = (event: any, selectedDate?: Date) => {
+    if (event?.type === 'dismissed') {
+      if (Platform.OS === 'android') setActivePicker(null);
+      return;
+    }
+    if (selectedDate) {
+      if (activePicker === 'open') setOpenTime(selectedDate);
+      if (activePicker === 'close') setCloseTime(selectedDate);
+    }
+    if (Platform.OS === 'android') setActivePicker(null);
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
 
   // 2. Hàm Save
   const handleSave = async () => {
@@ -139,6 +208,8 @@ export default function EditVenueScreen() {
         bankName: bankName.trim(),
         bankAccountNumber: bankAccountNumber.trim(),
         bankAccountName: bankAccountName.trim(),
+        openTime: formatTime(openTime),
+        closeTime: formatTime(closeTime),
       };
 
       await venueApi.updateVenue(id, payload);
@@ -316,12 +387,87 @@ Lng: ${lngValue.toFixed(6)}`);
             )}
             </View>
 
+            {/* Operating Hours Section */}
+            <View style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Giờ hoạt động</Text>
+                <View style={styles.inlineRow}>
+                    <View style={styles.inlineHalf}>
+                        <Text style={styles.label}>Giờ mở cửa</Text>
+                        <TouchableOpacity
+                            style={styles.inputRowSoft}
+                            onPress={() => setActivePicker('open')}
+                        >
+                            <Text style={styles.inputText}>{formatTime(openTime)}</Text>
+                            <Ionicons name="time-outline" size={20} color={Colors.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.inlineHalf}>
+                        <Text style={styles.label}>Giờ đóng cửa</Text>
+                        <TouchableOpacity
+                            style={styles.inputRowSoft}
+                            onPress={() => setActivePicker('close')}
+                        >
+                            <Text style={styles.inputText}>{formatTime(closeTime)}</Text>
+                            <Ionicons name="time-outline" size={20} color={Colors.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {activePicker && (
+                  Platform.OS === 'ios' ? (
+                    <Modal transparent animationType="fade" visible={!!activePicker}>
+                      <View style={styles.modalOverlay}>
+                        <View style={styles.modalCard}>
+                          <DateTimePicker
+                            value={activePicker === 'open' ? openTime : closeTime}
+                            mode="time"
+                            is24Hour
+                            display="spinner"
+                            onChange={onChangeTime}
+                          />
+                          <TouchableOpacity style={styles.modalDoneButton} onPress={() => setActivePicker(null)}>
+                            <Text style={styles.modalDoneText}>Xong</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </Modal>
+                  ) : (
+                    <DateTimePicker
+                      value={activePicker === 'open' ? openTime : closeTime}
+                      mode="time"
+                      is24Hour
+                      display="default"
+                      onChange={onChangeTime}
+                    />
+                  )
+                )}
+            </View>
+
             {/* Bank Info Section */}
             <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle}>Thông tin ngân hàng</Text>
-                <LabeledInput label="Mã BIN (e.g. 970422)" value={bankBin} onChangeText={setBankBin} keyboardType="number-pad" />
-                <LabeledInput label="Tên ngân hàng" value={bankName} onChangeText={setBankName} />
-                <LabeledInput label="Số tài khoản" value={bankAccountNumber} onChangeText={setBankAccountNumber} keyboardType="number-pad" />
+                
+                <Text style={styles.label}>Tên ngân hàng</Text>
+                <TouchableOpacity 
+                    style={styles.inputRowSoft} 
+                    onPress={() => setIsBankModalVisible(true)}
+                >
+                    <Text style={{ flex: 1, color: bankName ? Colors.text : Colors.textSecondary }}>
+                        {bankName || "Chọn ngân hàng..."}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color={Colors.textSecondary} />
+                </TouchableOpacity>
+
+                <View style={{ marginTop: 14 }}>
+                    <Text style={styles.label}>Mã BIN (Tự động)</Text>
+                    <View style={[styles.inputRowSoft, { backgroundColor: '#F3F4F6' }]}>
+                        <Text style={{ color: '#64748B' }}>{bankBin || "Mã BIN"}</Text>
+                    </View>
+                </View>
+
+                <View style={{ marginTop: 14 }}>
+                    <LabeledInput label="Số tài khoản" value={bankAccountNumber} onChangeText={setBankAccountNumber} keyboardType="number-pad" />
+                </View>
                 <LabeledInput label="Tên chủ tài khoản" value={bankAccountName} onChangeText={setBankAccountName} autoCapitalize="characters" />
             </View>
 
@@ -345,6 +491,39 @@ Lng: ${lngValue.toFixed(6)}`);
             </View>
 
         </ScrollView>
+
+        {/* Bank Picker Modal */}
+        <Modal visible={isBankModalVisible} animationType="slide" transparent>
+          <View style={styles.bankModalOverlay}>
+            <View style={styles.bankModalContent}>
+              <View style={styles.bankModalHeader}>
+                <Text style={styles.bankModalTitle}>Chọn ngân hàng</Text>
+                <TouchableOpacity onPress={() => setIsBankModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={styles.bankSearchInput}
+                placeholder="Tìm kiếm ngân hàng..."
+                value={searchBank}
+                onChangeText={setSearchBank}
+              />
+              <FlatList
+                data={filteredBanks}
+                keyExtractor={(item) => item.bin}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={styles.bankItem} 
+                    onPress={() => handleSelectBank(item)}
+                  >
+                    <Text style={styles.bankItemText}>{item.shortName}</Text>
+                    <Text style={styles.bankItemBin}>{item.bin}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
 
         {/* Footer with Fixed Save Button */}
         <View style={styles.footerContainer}>
@@ -495,6 +674,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.text,
   },
+  inputText: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text,
+  },
   inputMultiline: {
     minHeight: 90,
     textAlignVertical: "top",
@@ -557,6 +741,71 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: Colors.primary,
   },
+  bankModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  bankModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    height: '60%',
+  },
+  bankModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  bankModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  bankSearchInput: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 15,
+  },
+  bankItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  bankItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  bankItemBin: {
+    color: '#6B7280',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+  },
+  modalDoneButton: {
+    marginTop: 12,
+    backgroundColor: Colors.primary,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalDoneText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
   footerContainer: {
     padding: 16,
     backgroundColor: "#fff",
@@ -569,7 +818,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    // Removed marginTop since it's in footer
     elevation: 3,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 3 },

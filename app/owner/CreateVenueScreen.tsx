@@ -9,6 +9,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -21,6 +22,24 @@ import {
 } from 'react-native';
 import CustomHeader from '../../components/ui/CustomHeader';
 import apiClient from '../../api/apiClient';
+
+const BANKS = [
+  { bin: "970436", shortName: "Vietcombank" },
+  { bin: "970422", shortName: "MBBank" },
+  { bin: "970407", shortName: "Techcombank" },
+  { bin: "970416", shortName: "ACB" },
+  { bin: "970415", shortName: "VietinBank" },
+  { bin: "970418", shortName: "BIDV" },
+  { bin: "970423", shortName: "TPBank" },
+  { bin: "970432", shortName: "VPBank" },
+  { bin: "970403", shortName: "Sacombank" },
+  { bin: "970405", shortName: "Agribank" },
+  { bin: "970441", shortName: "VIB" },
+  { bin: "970443", shortName: "SHB" },
+  { bin: "970429", shortName: "SCB" },
+  { bin: "970452", shortName: "KienLongBank" },
+  { bin: "970437", shortName: "HDBank" }
+];
 
 const CreateVenueScreen = () => {
   const navigation = useNavigation<any>();
@@ -40,6 +59,8 @@ const CreateVenueScreen = () => {
   const [bankName, setBankName] = useState('');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [bankAccountName, setBankAccountName] = useState('');
+  const [isBankModalVisible, setIsBankModalVisible] = useState(false);
+  const [searchBank, setSearchBank] = useState('');
 
   // State Location
   const [latitude, setLatitude] = useState<string>('');
@@ -60,6 +81,17 @@ const CreateVenueScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- HANDLERS ---
+
+  const filteredBanks = BANKS.filter(b => 
+    b.shortName.toLowerCase().includes(searchBank.toLowerCase()) || 
+    b.bin.includes(searchBank)
+  );
+
+  const handleSelectBank = (bank: typeof BANKS[0]) => {
+    setBankName(bank.shortName);
+    setBankBin(bank.bin);
+    setIsBankModalVisible(false);
+  };
 
   // --- HÀM TÌM KIẾM ĐỊA CHỈ (Dùng OpenStreetMap - Miễn phí 100%) ---
   const geocodeAddress = async () => {
@@ -288,6 +320,8 @@ const CreateVenueScreen = () => {
         bankName: bankName.trim(),
         bankAccountNumber: bankAccountNumber.trim(),
         bankAccountName: bankAccountName.trim(),
+        openTime: formatTime(openTime),
+        closeTime: formatTime(closeTime),
       };
 
       console.log("📤 CreateVenue payload:", payload);
@@ -463,26 +497,25 @@ const CreateVenueScreen = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mã BIN (Mã ngân hàng)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="VD: 970422 (MB Bank)"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="number-pad"
-              value={bankBin}
-              onChangeText={setBankBin}
-            />
-            <Text style={styles.helperText}>Tra cứu mã BIN tại https://vietqr.io/danh-sach-api-lien-ket</Text>
+            <Text style={styles.label}>Tên ngân hàng</Text>
+            <TouchableOpacity 
+              style={[styles.input, styles.dropdownInput]} 
+              onPress={() => setIsBankModalVisible(true)}
+            >
+              <Text style={{ color: bankName ? '#111827' : '#9CA3AF', fontSize: 15 }}>
+                {bankName || "Chọn ngân hàng..."}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Tên ngân hàng</Text>
+            <Text style={styles.label}>Mã BIN (Tự động)</Text>
             <TextInput
-              style={styles.input}
-              placeholder="VD: MB Bank"
-              placeholderTextColor="#9CA3AF"
-              value={bankName}
-              onChangeText={setBankName}
+              style={[styles.input, { backgroundColor: '#F3F4F6', color: '#6B7280' }]}
+              placeholder="Mã BIN ngân hàng"
+              value={bankBin}
+              editable={false}
             />
           </View>
 
@@ -677,6 +710,39 @@ const CreateVenueScreen = () => {
 
           <View style={{ height: 40 }} />
         </ScrollView>
+
+        {/* Bank Picker Modal */}
+        <Modal visible={isBankModalVisible} animationType="slide" transparent>
+          <View style={styles.bankModalOverlay}>
+            <View style={styles.bankModalContent}>
+              <View style={styles.bankModalHeader}>
+                <Text style={styles.bankModalTitle}>Chọn ngân hàng</Text>
+                <TouchableOpacity onPress={() => setIsBankModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={styles.bankSearchInput}
+                placeholder="Tìm kiếm ngân hàng..."
+                value={searchBank}
+                onChangeText={setSearchBank}
+              />
+              <FlatList
+                data={filteredBanks}
+                keyExtractor={(item) => item.bin}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={styles.bankItem} 
+                    onPress={() => handleSelectBank(item)}
+                  >
+                    <Text style={styles.bankItemText}>{item.shortName}</Text>
+                    <Text style={styles.bankItemBin}>{item.bin}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
 
         {/* Footer with Fixed Submit Button */}
         <View style={styles.footerContainer}>
@@ -927,19 +993,59 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  bankModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  bankModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    height: '60%',
+  },
+  bankModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  bankModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  bankSearchInput: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 15,
+  },
+  bankItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  bankItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  bankItemBin: {
+    color: '#6B7280',
+  },
   footerContainer: {
     padding: 16,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    // iOS safe area handle can be improved but View handles layout reasonably well
   },
   submitButton: {
     backgroundColor: Colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    // Removed marginTop: 24 as it is now in footer
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
