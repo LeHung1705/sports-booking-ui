@@ -1,17 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-
-export interface NotificationItem {
-  id: string;
-  title?: string;
-  body?: string;
-  type?: string;
-  created_at?: string;
-  createdAt?: string;
-  read: boolean;
-  is_read?: boolean;
-}
+import { notificationApi, NotificationItem } from '../api/notificationApi';
 
 interface NotificationContextType {
   unreadCount: number;
@@ -45,15 +33,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
-      if (!token) return;
-
-      const res = await axios.get('http://192.168.0.202:8080/api/v1/notifications/my-notifications', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const data: NotificationItem[] = res.data || [];
-      const sorted = sortNotifications(data);
+      // apiClient tự động gắn token
+      const data = await notificationApi.getMyNotifications();
+      const sorted = sortNotifications(data || []);
       setNotifications(sorted);
       setUnreadCount(computeUnread(sorted));
     } catch (error) {
@@ -64,12 +46,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const markAsRead = useCallback(
     async (id: string) => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
-        if (!token) return;
-
-        await axios.put(`http://192.168.0.202:8080/api/v1/notifications/${id}/read`, {}, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await notificationApi.markAsRead(id);
 
         setNotifications((prev) => {
           const updated = prev.map((item) => (item.id === id ? { ...item, read: true, is_read: true } : item));
@@ -99,3 +76,5 @@ export const useNotification = () => {
   if (!context) throw new Error('useNotification must be used within a NotificationProvider');
   return context;
 };
+
+export type { NotificationItem }; // Export type để component dùng

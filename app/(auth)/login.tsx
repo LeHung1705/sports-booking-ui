@@ -1,6 +1,6 @@
 // app/screens/LoginScreen.tsx
 import { registerForPushNotificationsAsync } from '../../utils/pushNotifications'; // Import hàm vừa tạo
-import { notificationApi } from '../../api/apiClient'; // Import api call
+import { notificationApi } from '../../api/notificationApi'; // Import api call
 import { FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";

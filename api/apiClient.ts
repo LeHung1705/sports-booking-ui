@@ -5,7 +5,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 // Windows: ipconfig → IPv4 Address
 // Mac: ifconfig getifaddr en0
 
-const API_BASE_URL = "http://192.168.0.202:8080/api/v1";
+const API_BASE_URL = "http://192.168.80.29:8080/api/v1";
 
 
 const apiClient = axios.create({
@@ -86,12 +86,6 @@ apiClient.interceptors.response.use(
 
 // ============ HELPER FUNCTIONS ============
 export const getBaseURL = () => API_BASE_URL;
-// Thêm đoạn này vào cuối file hoặc trong export
-export const notificationApi = {
-  registerToken: async (token: string, deviceType: string) => {
-    return apiClient.post("/notifications/register", { token, deviceType });
-  },
-};
 
 export const testConnection = async (): Promise<boolean> => {
   try {

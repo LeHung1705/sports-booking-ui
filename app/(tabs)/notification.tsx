@@ -38,6 +38,9 @@ const getIcon = (type: string | undefined) => {
     case 'BOOKING_CONFIRMED': return { name: 'checkmark-circle', color: '#4CAF50' };
     case 'REMINDER': return { name: 'alarm', color: '#FF9800' };
     case 'BOOKING_CANCELLED': return { name: 'close-circle', color: '#EF4444' };
+    case 'VENUE_CREATED': return { name: 'business', color: '#9C27B0' };
+    case 'VENUE_APPROVED': return { name: 'shield-checkmark', color: '#4CAF50' };
+    case 'VENUE_REJECTED': return { name: 'alert-circle', color: '#EF4444' };
     default: return { name: 'notifications', color: '#757575' };
   }
 };
@@ -52,6 +55,7 @@ export default function NotificationsScreen() {
   const [filterType, setFilterType] = useState<'UNREAD' | 'ALL'>('UNREAD');
 
   const [isOwner, setIsOwner] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false); // 🆕 Thêm biến check Admin
   const [roleStr, setRoleStr] = useState<string | null>(null);
   const router = useRouter();
 
@@ -112,6 +116,7 @@ export default function NotificationsScreen() {
       }
       setRoleStr(parsedRole);
       setIsOwner(!!parsedRole && /owner/i.test(parsedRole));
+      setIsAdmin(!!parsedRole && /admin/i.test(parsedRole)); // 🆕 Check Admin
     };
     loadRole();
   }, []);
@@ -120,12 +125,44 @@ export default function NotificationsScreen() {
     if (!isRead(item)) {
        await markAsRead(item.id);
     }
+
+    // Lấy ID cần highlight (Backend trả về snake_case hoặc camelCase tùy cấu hình, check interface)
+    // Theo entity Notification.java, backend trả về JSON field: bookingId, venueId (do Jackson default)
+    // Nhưng nếu dùng native query mà ko qua DTO thì có thể là snake_case.
+    // Kiểm tra lại api/notificationApi.ts: interface NotificationItem có id, ...
+    // Để an toàn, check cả 2 case
+    // NOTE: item từ API trả về đã được map.
+    // Tạm thời assume API trả về đúng như interface (camelCase nếu dùng JPA/Jackson chuẩn)
+
+    // @ts-ignore
+    const targetBookingId = item.bookingId || item.booking_id;
+    // @ts-ignore
+    const targetVenueId = item.venueId || item.venue_id;
+
     // Logic điều hướng
-    if (isOwner || (roleStr && /owner/i.test(roleStr))) {
-      router.push('/owner/bookings');
+    if (item.type === 'VENUE_CREATED' && isAdmin) {
+        router.push({ pathname: '/admin/approve-venues', params: { highlightId: targetVenueId } });
+    } else if ((item.type === 'VENUE_APPROVED' || item.type === 'VENUE_REJECTED') && isOwner) {
+        // router.push('/owner/my-venues');
+        // Hoặc dẫn thẳng vào chi tiết nếu Approved?
+        // User yêu cầu: "New venue created -> leads to the approve_venue.tsx" (Done above)
+        // User yêu cầu: "Reject... won't appear".
+        // Với Approved: dẫn vào list hoặc detail. Dẫn vào list để thấy nó "Active".
+        router.push({ pathname: '/owner/my-venues', params: { highlightId: targetVenueId } });
+    } else if (isOwner || (roleStr && /owner/i.test(roleStr))) {
+        // "New course booking" -> owner/bookings
+        if (targetBookingId) {
+             router.push({ pathname: '/owner/bookings', params: { highlightId: targetBookingId } });
+        } else {
+             router.push('/owner/bookings');
+        }
     } else {
-       // Nếu là user thường thì có thể navigate trang khác hoặc không làm gì
-       // router.push('/(tabs)/history'); 
+       // "Booking successful" -> my_booking
+       if (targetBookingId) {
+            router.push({ pathname: '/booking/my_bookings', params: { highlightId: targetBookingId } });
+       } else {
+            router.push('/booking/my_bookings');
+       }
     }
   };
 

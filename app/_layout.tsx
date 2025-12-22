@@ -1,7 +1,9 @@
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
-import * as Notifications from "expo-notifications"; // 1. Thêm import này
+import * as Notifications from "expo-notifications";
 import { NotificationProvider } from "@/context/NotificationContext";
+import { registerForPushNotificationsAsync } from "@/utils/pushNotifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Cấu hình hiển thị thông báo khi App đang mở (Foreground)
 Notifications.setNotificationHandler({
@@ -17,33 +19,62 @@ Notifications.setNotificationHandler({
 export default function RootLayout() {
   const router = useRouter();
   
-  // 2. Thêm logic lắng nghe thông báo (State refs)
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
   useEffect(() => {
-    // A. Lắng nghe khi thông báo đến (App đang mở)
+    // 1. Đảm bảo đăng ký Channel (Android) và quyền (iOS) mỗi khi mở app
+    registerForPushNotificationsAsync();
+
+    // 2. Lắng nghe khi thông báo đến (Foreground)
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       console.log("🔔 RootLayout: Thông báo đến!", notification);
     });
 
-    // B. Lắng nghe khi người dùng BẤM vào thông báo
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+    // 3. Lắng nghe khi người dùng BẤM vào thông báo (Background/Killed -> Open)
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(async (response) => {
       console.log("👆 Người dùng bấm thông báo:", response);
+      const data = response.notification.request.content.data;
+      const type = data.type; // VENUE_CREATED, BOOKING_CREATED, etc.
       
-      // Ví dụ: Điều hướng đến trang Lịch sử đặt sân khi bấm thông báo
-      // const bookingId = response.notification.request.content.data.bookingId;
-      // if (bookingId) router.push(`/booking-details/${bookingId}`);
+      // Map keys from snake_case or camelCase
+      // @ts-ignore
+      const venueId = data.venueId || data.venue_id;
+      // @ts-ignore
+      const bookingId = data.bookingId || data.booking_id;
+
+      // Check Role (cần lấy từ Storage vì Context chưa chắc đã load xong)
+      const userRole = await AsyncStorage.getItem('userRole') || await AsyncStorage.getItem('role');
+      const isOwner = userRole && /owner/i.test(userRole);
+      const isAdmin = userRole && /admin/i.test(userRole);
+
+      if (type === 'VENUE_CREATED' && isAdmin) {
+          router.push({ pathname: '/admin/approve-venues', params: { highlightId: venueId } });
+      } else if ((type === 'VENUE_APPROVED' || type === 'VENUE_REJECTED') && isOwner) {
+          router.push({ pathname: '/owner/my-venues', params: { highlightId: venueId } });
+      } else if (isOwner) {
+          // Booking notifications for Owner
+          if (bookingId) {
+               router.push({ pathname: '/owner/bookings', params: { highlightId: bookingId } });
+          } else {
+               router.push('/owner/bookings');
+          }
+      } else {
+         // User notifications
+         if (bookingId) {
+              router.push({ pathname: '/booking/my_bookings', params: { highlightId: bookingId } });
+         } else {
+              router.push('/booking/my_bookings');
+         }
+      }
     });
 
     return () => {
-      // Dọn dẹp listener khi component unmount
       if (notificationListener.current) notificationListener.current.remove();
       if (responseListener.current) responseListener.current.remove();
     };
   }, []);
 
-  // 3. Phần giao diện Stack GIỮ NGUYÊN 100% như cũ của bạn
   return (
     <NotificationProvider>
       <Stack

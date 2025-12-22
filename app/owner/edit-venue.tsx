@@ -318,15 +318,20 @@ Lng: ${lngValue.toFixed(6)}`);
             )}
             </View>
 
-            <TouchableOpacity
-            style={[styles.saveButton, (saving || loadingDetail) && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={saving || loadingDetail}
-            activeOpacity={0.88}
-            >
-            {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.saveButtonText}>Lưu thay đổi</Text>}
-            </TouchableOpacity>
         </ScrollView>
+
+        {/* Footer with Fixed Save Button */}
+        <View style={styles.footerContainer}>
+             <TouchableOpacity
+                style={[styles.saveButton, (saving || loadingDetail) && styles.saveButtonDisabled]}
+                onPress={handleSave}
+                disabled={saving || loadingDetail}
+                activeOpacity={0.88}
+                >
+                {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.saveButtonText}>Lưu thay đổi</Text>}
+            </TouchableOpacity>
+        </View>
+
       </KeyboardAvoidingView>
     </View>
   );
@@ -526,13 +531,19 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: Colors.primary,
   },
+  footerContainer: {
+    padding: 16,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
   saveButton: {
     backgroundColor: Colors.primary,
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 6,
+    // Removed marginTop since it's in footer
     elevation: 3,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 3 },

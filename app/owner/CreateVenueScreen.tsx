@@ -62,9 +62,8 @@ const CreateVenueScreen = () => {
   // --- HANDLERS ---
 
   // --- HÀM TÌM KIẾM ĐỊA CHỈ (Dùng OpenStreetMap - Miễn phí 100%) ---
-  // --- HÀM TÌM KIẾM ĐỊA CHỈ (Dùng OpenStreetMap - Miễn phí 100%) ---
   const geocodeAddress = async () => {
-    // 1. Chuẩn hóa dữ liệu (PHẦN BẠN ĐANG THIẾU)
+    // 1. Chuẩn hóa dữ liệu
     const nameText = name.trim();
     const addressText = address.trim();
     const districtText = district.trim();
@@ -203,7 +202,7 @@ const CreateVenueScreen = () => {
     if (Platform.OS === 'android') setActivePicker(null);
   };
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
   const pickImage = async () => {
@@ -235,7 +234,7 @@ const CreateVenueScreen = () => {
     }
 
     if (!city || !district) {
-      Alert.alert("Thiếu thông tin", "Vui lòng nhập City và District để lưu chính xác.");
+      Alert.alert("Thiếu thông tin", "Vui lòng nhập Thành phố và Quận/Huyện để lưu chính xác.");
       return;
     }
 
@@ -275,7 +274,7 @@ const CreateVenueScreen = () => {
 
         Alert.alert(
           "Thành công",
-          "Đã tạo Venue mới! Bạn có muốn thêm sân (Court) cho Venue này ngay không?",
+          "Đã tạo địa điểm mới! Bạn có muốn thêm sân (Court) cho địa điểm này ngay không?",
           [
             {
               text: "Để sau",
@@ -283,7 +282,7 @@ const CreateVenueScreen = () => {
               style: "cancel"
             },
             {
-              text: "Thêm Court ngay",
+              text: "Thêm sân ngay",
               onPress: () => {
                 router.push({
                   pathname: '/owner/add-court',
@@ -312,7 +311,7 @@ const CreateVenueScreen = () => {
   return (
     <View style={styles.container}>
       <CustomHeader
-        title="Create Venue"
+        title="Tạo địa điểm"
         showBackButton
       />
 
@@ -325,21 +324,21 @@ const CreateVenueScreen = () => {
           {/* Basic Info */}
           <View style={styles.sectionHeader}>
             <Ionicons name="information-circle" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Basic Information</Text>
+            <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Venue Name</Text>
+            <Text style={styles.label}>Tên địa điểm</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g., TechBo Downtown Arena"
+              placeholder="VD: Sân bóng TechBo Thủ Đức"
               placeholderTextColor="#9CA3AF"
               value={name} onChangeText={setName}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Address</Text>
+            <Text style={styles.label}>Địa chỉ</Text>
             <View style={styles.inputContainer}>
               <TextInput
                 style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
@@ -353,20 +352,20 @@ const CreateVenueScreen = () => {
 
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 18 }}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>City</Text>
+              <Text style={styles.label}>Thành phố</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g., Ho Chi Minh"
+                placeholder="VD: TP. HCM"
                 placeholderTextColor="#9CA3AF"
                 value={city}
                 onChangeText={handleCityChange}
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>District</Text>
+              <Text style={styles.label}>Quận/Huyện</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g., Thu Duc"
+                placeholder="VD: Thủ Đức"
                 placeholderTextColor="#9CA3AF"
                 value={district}
                 onChangeText={handleDistrictChange}
@@ -377,11 +376,11 @@ const CreateVenueScreen = () => {
           {/* Location Coordinates */}
           <View style={styles.inputGroup}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={styles.label}>Location Coordinates</Text>
+              <Text style={styles.label}>Tọa độ vị trí (GPS)</Text>
               <TouchableOpacity onPress={geocodeAddress} disabled={isLoadingLocation} style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="locate" size={16} color={isLoadingLocation ? '#9CA3AF' : Colors.primary} />
                 <Text style={{ color: isLoadingLocation ? '#9CA3AF' : Colors.primary, fontSize: 13, fontWeight: '600', marginLeft: 4 }}>
-                  {isLoadingLocation ? 'Geocoding...' : 'Lấy GPS từ địa chỉ'}
+                  {isLoadingLocation ? 'Đang lấy...' : 'Lấy GPS từ địa chỉ'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -389,27 +388,27 @@ const CreateVenueScreen = () => {
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TextInput
                 style={[styles.input, { flex: 1, textAlign: 'center' }]}
-                placeholder="Latitude"
+                placeholder="Vĩ độ (Lat)"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="numeric"
                 value={latitude} onChangeText={setLatitude}
               />
               <TextInput
                 style={[styles.input, { flex: 1, textAlign: 'center' }]}
-                placeholder="Longitude"
+                placeholder="Kinh độ (Lng)"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="numeric"
                 value={longitude} onChangeText={setLongitude}
               />
             </View>
-            <Text style={styles.helperText}>Ô Address phải chứa: số nhà + tên đường, phường, quận, thành phố (ngăn cách dấu phẩy). City/District bên dưới chỉ để lưu DB.</Text>
+            <Text style={styles.helperText}>Ô Địa chỉ phải chứa: số nhà + tên đường, phường, quận, thành phố (ngăn cách dấu phẩy). Thành phố/Quận bên dưới chỉ để lưu DB.</Text>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Contact Phone</Text>
+            <Text style={styles.label}>Số điện thoại liên hệ</Text>
             <TextInput
               style={styles.input}
-              placeholder="+1 555-0123"
+              placeholder="+84 905 123 456"
               placeholderTextColor="#9CA3AF"
               keyboardType="phone-pad"
               value={phone} onChangeText={setPhone}
@@ -432,14 +431,14 @@ const CreateVenueScreen = () => {
           {/* Bank Info Section */}
           <View style={styles.sectionHeader}>
             <Ionicons name="card" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Banking Information</Text>
+            <Text style={styles.sectionTitle}>Thông tin ngân hàng</Text>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Bank BIN (Mã ngân hàng)</Text>
+            <Text style={styles.label}>Mã BIN (Mã ngân hàng)</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. 970422 (MB Bank)"
+              placeholder="VD: 970422 (MB Bank)"
               placeholderTextColor="#9CA3AF"
               keyboardType="number-pad"
               value={bankBin}
@@ -449,10 +448,10 @@ const CreateVenueScreen = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Bank Name</Text>
+            <Text style={styles.label}>Tên ngân hàng</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. MB Bank"
+              placeholder="VD: MB Bank"
               placeholderTextColor="#9CA3AF"
               value={bankName}
               onChangeText={setBankName}
@@ -460,10 +459,10 @@ const CreateVenueScreen = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Account Number</Text>
+            <Text style={styles.label}>Số tài khoản</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. 0368123456"
+              placeholder="VD: 0368123456"
               placeholderTextColor="#9CA3AF"
               keyboardType="number-pad"
               value={bankAccountNumber}
@@ -472,10 +471,10 @@ const CreateVenueScreen = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Account Name (Chủ tài khoản)</Text>
+            <Text style={styles.label}>Tên chủ tài khoản</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. NGUYEN VAN A"
+              placeholder="VD: NGUYEN VAN A"
               placeholderTextColor="#9CA3AF"
               autoCapitalize="characters"
               value={bankAccountName}
@@ -488,14 +487,14 @@ const CreateVenueScreen = () => {
           {/* Venue Details */}
           <View style={styles.sectionHeader}>
             <MaterialIcons name="description" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Venue Details</Text>
+            <Text style={styles.sectionTitle}>Chi tiết địa điểm</Text>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description</Text>
+            <Text style={styles.label}>Mô tả</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Describe the facilities, amenities..."
+              placeholder="Mô tả về cơ sở vật chất, tiện ích..."
               placeholderTextColor="#9CA3AF"
               multiline={true}
               numberOfLines={4}
@@ -505,7 +504,7 @@ const CreateVenueScreen = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Available Sport Types</Text>
+            <Text style={styles.label}>Các loại hình thể thao</Text>
             <View style={styles.chipContainer}>
               {availableSports.map((sport) => {
                 const isSelected = selectedSports.includes(sport);
@@ -540,7 +539,7 @@ const CreateVenueScreen = () => {
           {/* Photos */}
           <View style={styles.sectionHeader}>
             <Ionicons name="images" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Venue Photos</Text>
+            <Text style={styles.sectionTitle}>Hình ảnh địa điểm</Text>
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoContainer}>
@@ -548,7 +547,7 @@ const CreateVenueScreen = () => {
               <View style={styles.uploadIconCircle}>
                 <Ionicons name="cloud-upload-outline" size={24} color={Colors.primary} />
               </View>
-              <Text style={styles.uploadText}>Upload</Text>
+              <Text style={styles.uploadText}>Tải lên</Text>
             </TouchableOpacity>
 
             {images.map((img, index) => (
@@ -567,19 +566,19 @@ const CreateVenueScreen = () => {
               </View>
             ))}
           </ScrollView>
-          <Text style={styles.helperText}>Supported formats: JPG, PNG. Max 5 images.</Text>
+          <Text style={styles.helperText}>Hỗ trợ: JPG, PNG. Tối đa 5 ảnh.</Text>
 
           <View style={styles.divider} />
 
           {/* Operating Hours */}
           <View style={styles.sectionHeader}>
             <Ionicons name="time" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Operating Hours</Text>
+            <Text style={styles.sectionTitle}>Giờ hoạt động</Text>
           </View>
 
           <View style={styles.timeContainer}>
             <View style={styles.timeInputWrapper}>
-              <Text style={styles.label}>Opening Time</Text>
+              <Text style={styles.label}>Giờ mở cửa</Text>
               <TouchableOpacity
                 style={styles.dropdownInput}
                 onPress={() => setActivePicker('open')}
@@ -591,7 +590,7 @@ const CreateVenueScreen = () => {
             </View>
 
             <View style={styles.timeInputWrapper}>
-              <Text style={styles.label}>Closing Time</Text>
+              <Text style={styles.label}>Giờ đóng cửa</Text>
               <TouchableOpacity
                 style={styles.dropdownInput}
                 onPress={() => setActivePicker('close')}
@@ -615,7 +614,7 @@ const CreateVenueScreen = () => {
                   <View style={styles.modalCard}>
                     <View style={styles.modalHeader}>
                       <Text style={styles.modalTitle}>
-                        {activePicker === 'open' ? 'Opening time' : 'Closing time'}
+                        {activePicker === 'open' ? 'Giờ mở cửa' : 'Giờ đóng cửa'}
                       </Text>
                       <TouchableOpacity onPress={() => setActivePicker(null)}>
                         <Ionicons name="close" size={20} color="#111827" />
@@ -631,7 +630,7 @@ const CreateVenueScreen = () => {
                       style={{ alignSelf: 'stretch' }}
                     />
                     <TouchableOpacity style={styles.modalDoneButton} onPress={() => setActivePicker(null)}>
-                      <Text style={styles.modalDoneText}>Done</Text>
+                      <Text style={styles.modalDoneText}>Xong</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -648,21 +647,24 @@ const CreateVenueScreen = () => {
             )
           )}
 
-          {/* Submit Button */}
-          <TouchableOpacity
-            style={[styles.submitButton, isSubmitting && { backgroundColor: '#6EE7B7' }]}
-            onPress={handleCreateVenue}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.submitButtonText}>Create Venue</Text>
-            )}
-          </TouchableOpacity>
-
           <View style={{ height: 40 }} />
         </ScrollView>
+
+        {/* Footer with Fixed Submit Button */}
+        <View style={styles.footerContainer}>
+             <TouchableOpacity
+                style={[styles.submitButton, isSubmitting && { backgroundColor: '#6EE7B7' }]}
+                onPress={handleCreateVenue}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.submitButtonText}>Tạo địa điểm</Text>
+                )}
+              </TouchableOpacity>
+        </View>
+
       </KeyboardAvoidingView>
     </View>
   );
@@ -897,12 +899,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  footerContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    // iOS safe area handle can be improved but View handles layout reasonably well
+  },
   submitButton: {
     backgroundColor: Colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 24,
+    // Removed marginTop: 24 as it is now in footer
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,

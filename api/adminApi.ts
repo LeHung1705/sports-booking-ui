@@ -45,6 +45,10 @@ export const adminApi = {
     await apiClient.put(`/admin/venues/${venueId}/approve`);
   },
 
+  rejectVenue: async (venueId: string): Promise<void> => {
+    await apiClient.put(`/admin/venues/${venueId}/reject`);
+  },
+
   getAllUsers: async (): Promise<AdminUserItem[]> => {
     const response = await apiClient.get("/admin/users");
     return response.data;

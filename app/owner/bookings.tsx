@@ -1,6 +1,6 @@
 import CustomHeader from "@/components/ui/CustomHeader";
-import { useFocusEffect } from "expo-router";
-import React, { useCallback, useState } from "react";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +22,20 @@ export default function OwnerBookingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<'REFUND_PENDING' | 'AWAITING_CONFIRM' | 'CONFIRMED'>('REFUND_PENDING');
+  
+  const { highlightId } = useLocalSearchParams<{ highlightId: string }>();
+
+  // Effect to switch tab if highlightId is present
+  useEffect(() => {
+      if (highlightId && bookings.length > 0) {
+          const target = bookings.find(b => b.id === highlightId);
+          if (target) {
+              if (target.status === 'REFUND_PENDING') setSelectedCategory('REFUND_PENDING');
+              else if (target.status === 'CONFIRMED') setSelectedCategory('CONFIRMED');
+              else setSelectedCategory('AWAITING_CONFIRM');
+          }
+      }
+  }, [highlightId, bookings]);
 
   const fetchBookings = async () => {
     try {
@@ -170,9 +184,10 @@ export default function OwnerBookingsScreen() {
   const renderItem = ({ item }: { item: BookingListResponse }) => {
     const start = formatDateTime(item.startTime);
     const end = formatDateTime(item.endTime);
+    const isHighlighted = highlightId === item.id;
 
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, isHighlighted && styles.highlightedCard]}>
         <View style={styles.cardHeader}>
           <Text style={styles.userName}>{item.userName || "Khách vãng lai"}</Text>
           <StatusBadge status={item.status} />
@@ -408,6 +423,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+  },
+  highlightedCard: {
+    borderWidth: 2,
+    borderColor: PRIMARY,
+    backgroundColor: '#F0FDF4',
   },
   cardHeader: {
     flexDirection: "row",
