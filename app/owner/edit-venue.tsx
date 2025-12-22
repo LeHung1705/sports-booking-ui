@@ -15,6 +15,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Colors } from "../../constants/Colors";
 import { venueApi } from "../../api/venueApi";
+import apiClient from "../../api/apiClient";
 import type { VenueDetail, VenueUpdateRequest } from "../../types/venue";
 import CustomHeader from "@/components/ui/CustomHeader";
 import * as ImagePicker from "expo-image-picker";
@@ -97,25 +98,49 @@ export default function EditVenueScreen() {
       return;
     }
 
-    // Chuẩn bị payload gửi lên
-    const payload: VenueUpdateRequest = {
-      name: name?.trim(),
-      phone: phone?.trim(),
-      address: address?.trim(),
-      city: city?.trim(),
-      district: district?.trim(),
-      description: description?.trim(),
-      imageUrl: imageUrl?.trim(),
-      lat: latitude ?? undefined,
-      lng: longitude ?? undefined,
-      bankBin: bankBin.trim(),
-      bankName: bankName.trim(),
-      bankAccountNumber: bankAccountNumber.trim(),
-      bankAccountName: bankAccountName.trim(),
-    };
-
     setSaving(true);
+    let finalImageUrl = imageUrl;
+
     try {
+      // 1. Upload Image if it's a local file
+      if (imageUrl && imageUrl.startsWith('file://')) {
+        console.log("📤 Uploading new venue image...");
+        const filename = imageUrl.split('/').pop() || "venue_update.jpg";
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+        const formData = new FormData();
+        formData.append('file', { uri: imageUrl, name: filename, type } as any);
+
+        const uploadRes = await apiClient.post('/upload/image', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+
+        if (uploadRes.status === 200) {
+          finalImageUrl = uploadRes.data;
+          console.log("✅ Image uploaded:", finalImageUrl);
+        } else {
+          throw new Error("Upload failed");
+        }
+      }
+
+      // Chuẩn bị payload gửi lên
+      const payload: VenueUpdateRequest = {
+        name: name?.trim(),
+        phone: phone?.trim(),
+        address: address?.trim(),
+        city: city?.trim(),
+        district: district?.trim(),
+        description: description?.trim(),
+        imageUrl: finalImageUrl?.trim(),
+        lat: latitude ?? undefined,
+        lng: longitude ?? undefined,
+        bankBin: bankBin.trim(),
+        bankName: bankName.trim(),
+        bankAccountNumber: bankAccountNumber.trim(),
+        bankAccountName: bankAccountName.trim(),
+      };
+
       await venueApi.updateVenue(id, payload);
       
       Alert.alert("Thành công", "Thông tin sân đã được cập nhật!", [
@@ -130,6 +155,7 @@ export default function EditVenueScreen() {
       setSaving(false);
     }
   };
+
 
   const currentCourts = useMemo(() => venueDetail?.courts || [], [venueDetail]);
 

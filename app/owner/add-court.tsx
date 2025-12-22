@@ -122,16 +122,43 @@ export default function AddCourtScreen() {
       football: 'FOOTBALL', volleyball: 'VOLLEYBALL', pickleball: 'PICKLEBALL',
     };
 
-    const payload: CourtCreateRequest = {
-      name: courtName.trim(),
-      sport: sportEnumMap[selectedSport] ?? 'TENNIS',
-      pricePerHour: priceNumber,
-      isActive,
-      imageUrl: images[0] || "",
-    };
-
     setIsSubmitting(true);
     try {
+      let finalImageUrl = "";
+
+      // 1. Upload Image First (if exists)
+      if (images.length > 0) {
+        console.log("📤 Uploading court image...");
+        const localUri = images[0];
+        const filename = localUri.split('/').pop() || "court_upload.jpg";
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+        const formData = new FormData();
+        formData.append('file', { uri: localUri, name: filename, type } as any);
+
+        const uploadRes = await apiClient.post('/upload/image', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (uploadRes.status === 200) {
+          finalImageUrl = uploadRes.data;
+          console.log("✅ Court image uploaded successfully:", finalImageUrl);
+        } else {
+          throw new Error("Failed to upload court image");
+        }
+      }
+
+      const payload: CourtCreateRequest = {
+        name: courtName.trim(),
+        sport: sportEnumMap[selectedSport] ?? 'TENNIS',
+        pricePerHour: priceNumber,
+        isActive,
+        imageUrl: finalImageUrl,
+      };
+
       // Gọi API tạo sân
       await courtApi.createCourt(targetVenueId, payload);
       Alert.alert('Thành công', 'Đã thêm sân vào Venue!', [
