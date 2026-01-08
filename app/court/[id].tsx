@@ -1,8 +1,8 @@
 import { courtApi } from "@/api/courtApi";
 import type { CourtDetail, CourtReview } from "@/types/court";
 import { Colors } from "@/constants/Colors";
+import CustomHeader from "@/components/ui/CustomHeader";
 import { Ionicons } from "@expo/vector-icons";
-import CustomHeader from '@/components/ui/CustomHeader';
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {

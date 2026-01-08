@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View, RefreshControl } from 'react-native';
 import { adminApi, AdminUserItem } from '../../api/adminApi';
 import CustomHeader from '../../components/ui/CustomHeader';
 import { Colors } from '../../constants/Colors';
@@ -9,6 +9,7 @@ export default function ManageUsersScreen() {
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<AdminUserItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -30,7 +31,8 @@ export default function ManageUsersScreen() {
 
   const fetchUsers = async () => {
     try {
-      setLoading(true);
+      // Don't show full loading spinner if pulling to refresh
+      if (!refreshing) setLoading(true);
       const data = await adminApi.getAllUsers();
       setUsers(data);
       setFilteredUsers(data);
@@ -39,8 +41,14 @@ export default function ManageUsersScreen() {
       Alert.alert("Error", "Could not fetch users.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchUsers();
+  }, []);
 
   const handleUpgrade = async (uid: string, name: string) => {
     Alert.alert(
@@ -169,6 +177,7 @@ export default function ManageUsersScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           initialNumToRender={15}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />
       )}
     </View>
@@ -241,6 +250,10 @@ const styles = StyleSheet.create({
       paddingVertical: 2,
       borderRadius: 4,
       marginTop: 4,
+  },
+  roleText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   bgUser: { backgroundColor: '#E3F2FD' },
   bgOwner: { backgroundColor: '#E8F5E9' },

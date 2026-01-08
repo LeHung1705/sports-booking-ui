@@ -1,7 +1,7 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image, Alert } from 'react-native';
+import React, { useCallback, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image, Alert, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { venueApi } from '../../api/venueApi';
 import { VenueDetail } from '../../types/venue';
 import { Colors } from '../../constants/Colors';
@@ -11,6 +11,8 @@ export default function MyVenuesScreen() {
   const router = useRouter();
   const [venues, setVenues] = useState<VenueDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { highlightId } = useLocalSearchParams<{ highlightId: string }>();
 
   useFocusEffect(
     useCallback(() => {
@@ -20,7 +22,7 @@ export default function MyVenuesScreen() {
 
   const loadVenues = async () => {
     try {
-      setLoading(true);
+      if (!refreshing) setLoading(true);
       const data = await venueApi.getMyVenues();
       setVenues(data);
     } catch (error) {
@@ -28,12 +30,20 @@ export default function MyVenuesScreen() {
       Alert.alert('Error', 'Failed to load venues');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const renderItem = ({ item }: { item: VenueDetail }) => (
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadVenues();
+  }, []);
+
+  const renderItem = ({ item }: { item: VenueDetail }) => {
+    const isHighlighted = highlightId === item.id;
+    return (
     <TouchableOpacity 
-      style={styles.card}
+      style={[styles.card, isHighlighted && styles.highlightedCard]}
       onPress={() => router.push({ pathname: '/owner/VenueDetailScreen', params: { venueId: item.id } })}
     >
       <Image 
@@ -47,10 +57,15 @@ export default function MyVenuesScreen() {
             <Ionicons name="location-outline" size={14} color="#666" />
             <Text style={styles.city}>{item.city}</Text>
         </View>
+        {!item.isActive && (
+            <View style={styles.pendingBadge}>
+                <Text style={styles.pendingText}>Đang chờ duyệt</Text>
+            </View>
+        )}
       </View>
       <Ionicons name="chevron-forward" size={24} color="#ccc" />
     </TouchableOpacity>
-  );
+  )};
 
   return (
     <View style={styles.container}>
@@ -64,7 +79,7 @@ export default function MyVenuesScreen() {
         }
       />
       
-      {loading ? (
+      {loading && !refreshing ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
@@ -84,6 +99,7 @@ export default function MyVenuesScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />
       )}
     </View>
@@ -115,6 +131,24 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
+  },
+  highlightedCard: {
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    backgroundColor: '#F0FDF4',
+  },
+  pendingBadge: {
+      backgroundColor: '#FFF3E0',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      marginTop: 4,
+      alignSelf: 'flex-start',
+  },
+  pendingText: {
+      fontSize: 10,
+      color: '#FF9800',
+      fontWeight: 'bold',
   },
   image: {
     width: 60,

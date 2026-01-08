@@ -28,7 +28,7 @@ export default function TimeGrid({ courts, selectedSlots, onToggleSlot }: TimeGr
 
           {/* Grid giờ */}
           <View style={styles.grid}>
-            {court.slots.map((slot) => {
+            {court.slots.map((slot: TimeSlot) => {
               const isSelected = selectedSlots.includes(slot.id);
               const isAvailable = slot.isAvailable;
 

@@ -1,4 +1,6 @@
 // app/screens/LoginScreen.tsx
+import { registerForPushNotificationsAsync } from '../../utils/pushNotifications'; // Import hàm vừa tạo
+import { notificationApi } from '../../api/notificationApi'; // Import api call
 import { FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -42,6 +44,21 @@ export default function LoginScreen() {
         if (response.data.user) {
             await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
         }
+        // --- ĐOẠN MỚI THÊM: ĐĂNG KÝ PUSH TOKEN ---
+        try {
+            console.log("🚀 Đang đăng ký Push Notification...");
+            const pushToken = await registerForPushNotificationsAsync();
+            if (pushToken) {
+                await notificationApi.registerToken(
+                    pushToken, 
+                    Platform.OS // 'ios' hoặc 'android'
+                );
+                console.log("✅ Đã gửi token lên server thành công!");
+            }
+        } catch (pushErr) {
+            console.log("⚠️ Lỗi đăng ký push (không chặn login):", pushErr);
+        }
+        // ------------------------------------------
       }
 
       Alert.alert("Success", "Login successful!", [

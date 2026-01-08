@@ -151,7 +151,7 @@ export default function RevenueChart({ onStatsChange }: RevenueChartProps) {
                         pointerLabelHeight: 90,
                         activatePointersOnLongPress: true,
                         autoAdjustPointerLabelPosition: false,
-                        pointerLabelComponent: items => {
+                        pointerLabelComponent: (items: any[]) => {
                           const item = items[0];
                           return (
                             <View

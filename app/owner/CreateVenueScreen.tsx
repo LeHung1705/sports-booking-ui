@@ -9,6 +9,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -20,12 +21,29 @@ import {
   View
 } from 'react-native';
 import CustomHeader from '../../components/ui/CustomHeader';
-
 import apiClient from '../../api/apiClient';
+
+const BANKS = [
+  { bin: "970436", shortName: "Vietcombank" },
+  { bin: "970422", shortName: "MBBank" },
+  { bin: "970407", shortName: "Techcombank" },
+  { bin: "970416", shortName: "ACB" },
+  { bin: "970415", shortName: "VietinBank" },
+  { bin: "970418", shortName: "BIDV" },
+  { bin: "970423", shortName: "TPBank" },
+  { bin: "970432", shortName: "VPBank" },
+  { bin: "970403", shortName: "Sacombank" },
+  { bin: "970405", shortName: "Agribank" },
+  { bin: "970441", shortName: "VIB" },
+  { bin: "970443", shortName: "SHB" },
+  { bin: "970429", shortName: "SCB" },
+  { bin: "970452", shortName: "KienLongBank" },
+  { bin: "970437", shortName: "HDBank" }
+];
 
 const CreateVenueScreen = () => {
   const navigation = useNavigation<any>();
-  const router = useRouter(); 
+  const router = useRouter();
 
   // State Form
   const [name, setName] = useState<string>('');
@@ -35,12 +53,14 @@ const CreateVenueScreen = () => {
   const [phone, setPhone] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [description, setDescription] = useState<string>('');
-  
+
   // Bank Info State
   const [bankBin, setBankBin] = useState('');
   const [bankName, setBankName] = useState('');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [bankAccountName, setBankAccountName] = useState('');
+  const [isBankModalVisible, setIsBankModalVisible] = useState(false);
+  const [searchBank, setSearchBank] = useState('');
 
   // State Location
   const [latitude, setLatitude] = useState<string>('');
@@ -54,43 +74,131 @@ const CreateVenueScreen = () => {
   const [images, setImages] = useState<string[]>([]);
 
   // State Time
-  const [openTime, setOpenTime] = useState<Date>(new Date(new Date().setHours(8, 0, 0, 0))); 
-  const [closeTime, setCloseTime] = useState<Date>(new Date(new Date().setHours(22, 0, 0, 0))); 
+  const [openTime, setOpenTime] = useState<Date>(new Date(new Date().setHours(8, 0, 0, 0)));
+  const [closeTime, setCloseTime] = useState<Date>(new Date(new Date().setHours(22, 0, 0, 0)));
   const [activePicker, setActivePicker] = useState<'open' | 'close' | null>(null);
-  
-  const [isSubmitting, setIsSubmitting] = useState(false); 
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- HANDLERS ---
 
+  const filteredBanks = BANKS.filter(b => 
+    b.shortName.toLowerCase().includes(searchBank.toLowerCase()) || 
+    b.bin.includes(searchBank)
+  );
+
+  const handleSelectBank = (bank: typeof BANKS[0]) => {
+    setBankName(bank.shortName);
+    setBankBin(bank.bin);
+    setIsBankModalVisible(false);
+  };
+
+  // --- HÀM TÌM KIẾM ĐỊA CHỈ (Dùng OpenStreetMap - Miễn phí 100%) ---
   const geocodeAddress = async () => {
-    const query = [address, district, city].filter(Boolean).join(', ');
-    if (!query.trim()) {
-      Alert.alert('Thiếu địa chỉ', 'Nhập địa chỉ + quận/huyện + thành phố trước khi lấy tọa độ.');
+    // 1. Chuẩn hóa dữ liệu
+    const nameText = name.trim();
+    const addressText = address.trim();
+    const districtText = district.trim();
+    const cityText = city.trim();
+
+    // Validate: Bắt buộc phải có (Tên HOẶC Địa chỉ) VÀ (Quận HOẶC Thành phố)
+    if ((!addressText && !nameText) || (!districtText && !cityText)) {
+      Alert.alert('Thiếu thông tin', 'Vui lòng nhập "Tên sân/Địa chỉ" và "Quận/Thành phố".');
       return;
     }
 
     setIsLoadingLocation(true);
+
+    // Hàm gọi API OpenStreetMap (Nominatim)
+    const searchOSM = async (query: string) => {
+      try {
+        console.log("🌍 Đang tìm trên OpenStreetMap:", query);
+        const osmUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`;
+
+        const res = await fetch(osmUrl, {
+          headers: {
+            'User-Agent': 'SportsBookingApp-StudentProject/1.0' // User-Agent để tránh bị chặn
+          },
+        });
+        const data = await res.json();
+
+        if (Array.isArray(data) && data.length > 0) {
+          return data[0]; // Trả về kết quả đầu tiên
+        }
+      } catch (e) {
+        console.warn("Lỗi tìm kiếm OSM:", e);
+      }
+      return null;
+    };
+
     try {
+      // Xin quyền vị trí
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Cần quyền', 'Cho phép quyền vị trí để geocode địa chỉ.');
         return;
       }
 
-      const results = await Location.geocodeAsync(query);
-      if (!results.length) {
-        Alert.alert('Không tìm thấy', 'Không tìm được tọa độ cho địa chỉ này.');
-        return;
+      let result = null;
+      let methodUsed = '';
+
+      // --- BƯỚC 1: Tìm theo TÊN SÂN + QUẬN + TP ---
+      if (nameText) {
+        const queryName = [nameText, districtText, cityText].filter(Boolean).join(', ');
+        result = await searchOSM(queryName);
+        if (result) methodUsed = 'Tên địa điểm';
       }
 
-      const { latitude: latValue, longitude: lngValue } = results[0];
-      setLatitude(latValue.toString());
-      setLongitude(lngValue.toString());
-      Alert.alert('Đã lấy tọa độ', `Lat: ${latValue.toFixed(6)}
-Lng: ${lngValue.toFixed(6)}`);
+      // --- BƯỚC 2: Tìm theo ĐỊA CHỈ + QUẬN + TP ---
+      if (!result && addressText) {
+        const queryAddress = [addressText, districtText, cityText].filter(Boolean).join(', ');
+        result = await searchOSM(queryAddress);
+        if (result) methodUsed = 'Địa chỉ';
+      }
+
+      // --- BƯỚC 3: Tìm theo ĐƯỜNG + QUẬN + TP (Nếu số nhà bị sai) ---
+      if (!result && addressText) {
+        const streetOnly = addressText.replace(/^[0-9\/]+\s+/g, '');
+        if (streetOnly !== addressText) {
+          const queryStreet = [streetOnly, districtText, cityText].filter(Boolean).join(', ');
+          result = await searchOSM(queryStreet);
+          if (result) methodUsed = 'Tên đường (Tương đối)';
+        }
+      }
+
+      // --- XỬ LÝ KẾT QUẢ ---
+      if (result) {
+        const lat = result.lat;
+        const lng = result.lon; // OSM dùng 'lon' thay vì 'lng'
+
+        setLatitude(lat);
+        setLongitude(lng);
+
+        console.log(`✅ Tìm thấy [${methodUsed}]:`, lat, lng);
+        Alert.alert(
+          `Thành công (${methodUsed})`,
+          `Địa điểm: ${result.display_name}\n\nLat: ${parseFloat(lat).toFixed(6)}\nLng: ${parseFloat(lng).toFixed(6)}`
+        );
+      } else {
+        // --- BƯỚC CUỐI: Dùng Native Geocoder của điện thoại (Fallback) ---
+        console.log("📱 Chuyển sang Native Geocoder...");
+        const fallbackQuery = [addressText, districtText, cityText].filter(Boolean).join(', ');
+        const nativeResults = await Location.geocodeAsync(fallbackQuery);
+
+        if (nativeResults.length > 0) {
+          const lat = nativeResults[0].latitude.toString();
+          const lng = nativeResults[0].longitude.toString();
+          setLatitude(lat);
+          setLongitude(lng);
+          Alert.alert("Kết quả (Thiết bị)", `Tìm thấy tọa độ tương đối.\nLat: ${lat}\nLng: ${lng}`);
+        } else {
+          Alert.alert("Thất bại", "Không tìm thấy địa điểm này. Hãy thử nhập tên phổ biến hơn.");
+        }
+      }
+
     } catch (error) {
-      console.error('Geocode failed', error);
-      Alert.alert('Lỗi', 'Không thể lấy tọa độ. Thử lại sau.');
+      console.error(error);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi tìm kiếm.');
     } finally {
       setIsLoadingLocation(false);
     }
@@ -126,7 +234,7 @@ Lng: ${lngValue.toFixed(6)}`);
     if (Platform.OS === 'android') setActivePicker(null);
   };
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
   const pickImage = async () => {
@@ -158,18 +266,46 @@ Lng: ${lngValue.toFixed(6)}`);
     }
 
     if (!city || !district) {
-      Alert.alert("Thiếu thông tin", "Vui lòng nhập City và District để lưu chính xác.");
+      Alert.alert("Thiếu thông tin", "Vui lòng nhập Thành phố và Quận/Huyện để lưu chính xác.");
       return;
     }
 
     if (!bankBin || !bankAccountNumber || !bankAccountName || !bankName) {
-        Alert.alert("Thiếu thông tin ngân hàng", "Vui lòng nhập đầy đủ thông tin ngân hàng để nhận thanh toán.");
-        return;
+      Alert.alert("Thiếu thông tin ngân hàng", "Vui lòng nhập đầy đủ thông tin ngân hàng để nhận thanh toán.");
+      return;
     }
 
     setIsSubmitting(true);
 
     try {
+      let finalImageUrl = "";
+
+      // 1. Upload Image First (if exists)
+      if (images.length > 0) {
+        console.log("📤 Uploading image...");
+        const localUri = images[0];
+        const filename = localUri.split('/').pop() || "upload.jpg";
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+        const formData = new FormData();
+        formData.append('file', { uri: localUri, name: filename, type } as any);
+
+        const uploadRes = await apiClient.post('/upload/image', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (uploadRes.status === 200) {
+          finalImageUrl = uploadRes.data;
+          console.log("✅ Image uploaded successfully:", finalImageUrl);
+        } else {
+          throw new Error("Failed to upload image");
+        }
+      }
+
+      // 2. Create Venue with Cloudinary URL
       const payload = {
         name,
         address,
@@ -177,13 +313,15 @@ Lng: ${lngValue.toFixed(6)}`);
         city,
         phone,
         description,
-        imageUrl: images.length > 0 ? images[0] : "", 
+        imageUrl: finalImageUrl,
         lat: parseFloat(latitude),
         lng: parseFloat(longitude),
         bankBin: bankBin.trim(),
         bankName: bankName.trim(),
         bankAccountNumber: bankAccountNumber.trim(),
         bankAccountName: bankAccountName.trim(),
+        openTime: formatTime(openTime),
+        closeTime: formatTime(closeTime),
       };
 
       console.log("📤 CreateVenue payload:", payload);
@@ -193,20 +331,20 @@ Lng: ${lngValue.toFixed(6)}`);
       console.log("✅ CreateVenue response:", response.status, response.data);
 
       if (response.status === 201 || response.status === 200) {
-        const newVenueId = response.data.id; 
+        const newVenueId = response.data.id;
         console.log("🚀 Created Venue ID:", newVenueId);
 
         Alert.alert(
-          "Thành công", 
-          "Đã tạo Venue mới! Bạn có muốn thêm sân (Court) cho Venue này ngay không?", 
+          "Thành công",
+          "Đã tạo địa điểm mới! Bạn có muốn thêm sân (Court) cho địa điểm này ngay không?",
           [
             {
-              text: "Để sau", 
-              onPress: () => navigation.goBack(), 
+              text: "Để sau",
+              onPress: () => navigation.goBack(),
               style: "cancel"
             },
             {
-              text: "Thêm Court ngay", 
+              text: "Thêm sân ngay",
               onPress: () => {
                 router.push({
                   pathname: '/owner/add-court',
@@ -216,7 +354,7 @@ Lng: ${lngValue.toFixed(6)}`);
             }
           ]
         );
-      } 
+      }
       else {
         Alert.alert("Lỗi", `Server trả về status ${response.status}`);
       }
@@ -235,38 +373,38 @@ Lng: ${lngValue.toFixed(6)}`);
   return (
     <View style={styles.container}>
       <CustomHeader
-        title="Create Venue"
+        title="Tạo địa điểm"
         showBackButton
       />
 
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}> 
-          
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
           {/* Basic Info */}
           <View style={styles.sectionHeader}>
             <Ionicons name="information-circle" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Basic Information</Text>
+            <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Venue Name</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="e.g., TechBo Downtown Arena" 
+            <Text style={styles.label}>Tên địa điểm</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="VD: Sân bóng TechBo Thủ Đức"
               placeholderTextColor="#9CA3AF"
               value={name} onChangeText={setName}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Address</Text>
+            <Text style={styles.label}>Địa chỉ</Text>
             <View style={styles.inputContainer}>
-              <TextInput 
-                style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]} 
-                placeholder="Street, City, Zip" 
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
+                placeholder="Số nhà, đường, phường, quận, thành phố"
                 placeholderTextColor="#9CA3AF"
                 value={address} onChangeText={handleAddressChange}
               />
@@ -274,22 +412,22 @@ Lng: ${lngValue.toFixed(6)}`);
             </View>
           </View>
 
-          <View style={{flexDirection: 'row', gap: 12, marginBottom: 18}}>
-            <View style={{flex: 1}}>
-              <Text style={styles.label}>City</Text>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 18 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Thành phố</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g., Ho Chi Minh"
+                placeholder="VD: TP. HCM"
                 placeholderTextColor="#9CA3AF"
                 value={city}
                 onChangeText={handleCityChange}
               />
             </View>
-            <View style={{flex: 1}}>
-              <Text style={styles.label}>District</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Quận/Huyện</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g., Thu Duc"
+                placeholder="VD: Thủ Đức"
                 placeholderTextColor="#9CA3AF"
                 value={district}
                 onChangeText={handleDistrictChange}
@@ -299,40 +437,40 @@ Lng: ${lngValue.toFixed(6)}`);
 
           {/* Location Coordinates */}
           <View style={styles.inputGroup}>
-            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8}}>
-              <Text style={styles.label}>Location Coordinates</Text>
-              <TouchableOpacity onPress={geocodeAddress} disabled={isLoadingLocation} style={{flexDirection: 'row', alignItems: 'center'}}>
-                 <Ionicons name="locate" size={16} color={isLoadingLocation ? '#9CA3AF' : Colors.primary} />
-                 <Text style={{color: isLoadingLocation ? '#9CA3AF' : Colors.primary, fontSize: 13, fontWeight: '600', marginLeft: 4}}>
-                   {isLoadingLocation ? 'Geocoding...' : 'Lấy GPS từ địa chỉ'}
-                 </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={styles.label}>Tọa độ vị trí (GPS)</Text>
+              <TouchableOpacity onPress={geocodeAddress} disabled={isLoadingLocation} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="locate" size={16} color={isLoadingLocation ? '#9CA3AF' : Colors.primary} />
+                <Text style={{ color: isLoadingLocation ? '#9CA3AF' : Colors.primary, fontSize: 13, fontWeight: '600', marginLeft: 4 }}>
+                  {isLoadingLocation ? 'Đang lấy...' : 'Lấy GPS từ địa chỉ'}
+                </Text>
               </TouchableOpacity>
             </View>
-            
-            <View style={{flexDirection: 'row', gap: 12}}>
-              <TextInput 
-                style={[styles.input, {flex: 1, textAlign: 'center'}]} 
-                placeholder="Latitude" 
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TextInput
+                style={[styles.input, { flex: 1, textAlign: 'center' }]}
+                placeholder="Vĩ độ (Lat)"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="numeric"
                 value={latitude} onChangeText={setLatitude}
               />
-              <TextInput 
-                style={[styles.input, {flex: 1, textAlign: 'center'}]} 
-                placeholder="Longitude" 
+              <TextInput
+                style={[styles.input, { flex: 1, textAlign: 'center' }]}
+                placeholder="Kinh độ (Lng)"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="numeric"
                 value={longitude} onChangeText={setLongitude}
               />
             </View>
-            <Text style={styles.helperText}>Nhập địa chỉ/quận/thành phố rồi bấm “Lấy GPS từ địa chỉ” để geocode.</Text>
+            <Text style={styles.helperText}>Ô Địa chỉ phải chứa: số nhà + tên đường, phường, quận, thành phố (ngăn cách dấu phẩy). Thành phố/Quận bên dưới chỉ để lưu DB.</Text>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Contact Phone</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="+1 555-0123" 
+            <Text style={styles.label}>Số điện thoại liên hệ</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="+84 905 123 456"
               placeholderTextColor="#9CA3AF"
               keyboardType="phone-pad"
               value={phone} onChangeText={setPhone}
@@ -341,9 +479,9 @@ Lng: ${lngValue.toFixed(6)}`);
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="admin@venue.com" 
+            <TextInput
+              style={styles.input}
+              placeholder="admin@venue.com"
               placeholderTextColor="#9CA3AF"
               keyboardType="email-address"
               value={email} onChangeText={setEmail}
@@ -355,55 +493,54 @@ Lng: ${lngValue.toFixed(6)}`);
           {/* Bank Info Section */}
           <View style={styles.sectionHeader}>
             <Ionicons name="card" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Banking Information</Text>
+            <Text style={styles.sectionTitle}>Thông tin ngân hàng</Text>
           </View>
 
           <View style={styles.inputGroup}>
-             <Text style={styles.label}>Bank BIN (Mã ngân hàng)</Text>
-             <TextInput 
-                style={styles.input}
-                placeholder="e.g. 970422 (MB Bank)"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="number-pad"
-                value={bankBin}
-                onChangeText={setBankBin}
-             />
-             <Text style={styles.helperText}>Tra cứu mã BIN tại https://vietqr.io/danh-sach-api-lien-ket</Text>
+            <Text style={styles.label}>Tên ngân hàng</Text>
+            <TouchableOpacity 
+              style={[styles.input, styles.dropdownInput]} 
+              onPress={() => setIsBankModalVisible(true)}
+            >
+              <Text style={{ color: bankName ? '#111827' : '#9CA3AF', fontSize: 15 }}>
+                {bankName || "Chọn ngân hàng..."}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
-             <Text style={styles.label}>Bank Name</Text>
-             <TextInput 
-                style={styles.input}
-                placeholder="e.g. MB Bank"
-                placeholderTextColor="#9CA3AF"
-                value={bankName}
-                onChangeText={setBankName}
-             />
+            <Text style={styles.label}>Mã BIN (Tự động)</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: '#F3F4F6', color: '#6B7280' }]}
+              placeholder="Mã BIN ngân hàng"
+              value={bankBin}
+              editable={false}
+            />
           </View>
 
           <View style={styles.inputGroup}>
-             <Text style={styles.label}>Account Number</Text>
-             <TextInput 
-                style={styles.input}
-                placeholder="e.g. 0368123456"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="number-pad"
-                value={bankAccountNumber}
-                onChangeText={setBankAccountNumber}
-             />
+            <Text style={styles.label}>Số tài khoản</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="VD: 0368123456"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
+              value={bankAccountNumber}
+              onChangeText={setBankAccountNumber}
+            />
           </View>
 
           <View style={styles.inputGroup}>
-             <Text style={styles.label}>Account Name (Chủ tài khoản)</Text>
-             <TextInput 
-                style={styles.input}
-                placeholder="e.g. NGUYEN VAN A"
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="characters"
-                value={bankAccountName}
-                onChangeText={setBankAccountName}
-             />
+            <Text style={styles.label}>Tên chủ tài khoản</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="VD: NGUYEN VAN A"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="characters"
+              value={bankAccountName}
+              onChangeText={setBankAccountName}
+            />
           </View>
 
           <View style={styles.divider} />
@@ -411,14 +548,14 @@ Lng: ${lngValue.toFixed(6)}`);
           {/* Venue Details */}
           <View style={styles.sectionHeader}>
             <MaterialIcons name="description" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Venue Details</Text>
+            <Text style={styles.sectionTitle}>Chi tiết địa điểm</Text>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description</Text>
-            <TextInput 
-              style={[styles.input, styles.textArea]} 
-              placeholder="Describe the facilities, amenities..." 
+            <Text style={styles.label}>Mô tả</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Mô tả về cơ sở vật chất, tiện ích..."
               placeholderTextColor="#9CA3AF"
               multiline={true}
               numberOfLines={4}
@@ -428,13 +565,13 @@ Lng: ${lngValue.toFixed(6)}`);
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Available Sport Types</Text>
+            <Text style={styles.label}>Các loại hình thể thao</Text>
             <View style={styles.chipContainer}>
               {availableSports.map((sport) => {
                 const isSelected = selectedSports.includes(sport);
                 return (
-                  <TouchableOpacity 
-                    key={sport} 
+                  <TouchableOpacity
+                    key={sport}
                     style={[styles.chip, isSelected && styles.chipSelected]}
                     onPress={() => toggleSport(sport)}
                   >
@@ -443,7 +580,7 @@ Lng: ${lngValue.toFixed(6)}`);
                         name="checkmark"
                         size={16}
                         color={Colors.primary}
-                        style={{marginRight: 4}}
+                        style={{ marginRight: 4 }}
                       />
                     )}
                     <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
@@ -463,7 +600,7 @@ Lng: ${lngValue.toFixed(6)}`);
           {/* Photos */}
           <View style={styles.sectionHeader}>
             <Ionicons name="images" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Venue Photos</Text>
+            <Text style={styles.sectionTitle}>Hình ảnh địa điểm</Text>
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoContainer}>
@@ -471,7 +608,7 @@ Lng: ${lngValue.toFixed(6)}`);
               <View style={styles.uploadIconCircle}>
                 <Ionicons name="cloud-upload-outline" size={24} color={Colors.primary} />
               </View>
-              <Text style={styles.uploadText}>Upload</Text>
+              <Text style={styles.uploadText}>Tải lên</Text>
             </TouchableOpacity>
 
             {images.map((img, index) => (
@@ -490,21 +627,21 @@ Lng: ${lngValue.toFixed(6)}`);
               </View>
             ))}
           </ScrollView>
-          <Text style={styles.helperText}>Supported formats: JPG, PNG. Max 5 images.</Text>
+          <Text style={styles.helperText}>Hỗ trợ: JPG, PNG. Tối đa 5 ảnh.</Text>
 
           <View style={styles.divider} />
 
           {/* Operating Hours */}
           <View style={styles.sectionHeader}>
             <Ionicons name="time" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Operating Hours</Text>
+            <Text style={styles.sectionTitle}>Giờ hoạt động</Text>
           </View>
-          
+
           <View style={styles.timeContainer}>
             <View style={styles.timeInputWrapper}>
-              <Text style={styles.label}>Opening Time</Text>
-              <TouchableOpacity 
-                style={styles.dropdownInput} 
+              <Text style={styles.label}>Giờ mở cửa</Text>
+              <TouchableOpacity
+                style={styles.dropdownInput}
                 onPress={() => setActivePicker('open')}
                 activeOpacity={0.7}
               >
@@ -514,9 +651,9 @@ Lng: ${lngValue.toFixed(6)}`);
             </View>
 
             <View style={styles.timeInputWrapper}>
-              <Text style={styles.label}>Closing Time</Text>
-              <TouchableOpacity 
-                style={styles.dropdownInput} 
+              <Text style={styles.label}>Giờ đóng cửa</Text>
+              <TouchableOpacity
+                style={styles.dropdownInput}
                 onPress={() => setActivePicker('close')}
                 activeOpacity={0.7}
               >
@@ -538,7 +675,7 @@ Lng: ${lngValue.toFixed(6)}`);
                   <View style={styles.modalCard}>
                     <View style={styles.modalHeader}>
                       <Text style={styles.modalTitle}>
-                        {activePicker === 'open' ? 'Opening time' : 'Closing time'}
+                        {activePicker === 'open' ? 'Giờ mở cửa' : 'Giờ đóng cửa'}
                       </Text>
                       <TouchableOpacity onPress={() => setActivePicker(null)}>
                         <Ionicons name="close" size={20} color="#111827" />
@@ -554,7 +691,7 @@ Lng: ${lngValue.toFixed(6)}`);
                       style={{ alignSelf: 'stretch' }}
                     />
                     <TouchableOpacity style={styles.modalDoneButton} onPress={() => setActivePicker(null)}>
-                      <Text style={styles.modalDoneText}>Done</Text>
+                      <Text style={styles.modalDoneText}>Xong</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -571,21 +708,57 @@ Lng: ${lngValue.toFixed(6)}`);
             )
           )}
 
-          {/* Submit Button */}
-          <TouchableOpacity 
-            style={[styles.submitButton, isSubmitting && {backgroundColor: '#6EE7B7'}]}
-            onPress={handleCreateVenue}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.submitButtonText}>Create Venue</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={{height: 40}} /> 
+          <View style={{ height: 40 }} />
         </ScrollView>
+
+        {/* Bank Picker Modal */}
+        <Modal visible={isBankModalVisible} animationType="slide" transparent>
+          <View style={styles.bankModalOverlay}>
+            <View style={styles.bankModalContent}>
+              <View style={styles.bankModalHeader}>
+                <Text style={styles.bankModalTitle}>Chọn ngân hàng</Text>
+                <TouchableOpacity onPress={() => setIsBankModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={styles.bankSearchInput}
+                placeholder="Tìm kiếm ngân hàng..."
+                value={searchBank}
+                onChangeText={setSearchBank}
+              />
+              <FlatList
+                data={filteredBanks}
+                keyExtractor={(item) => item.bin}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={styles.bankItem} 
+                    onPress={() => handleSelectBank(item)}
+                  >
+                    <Text style={styles.bankItemText}>{item.shortName}</Text>
+                    <Text style={styles.bankItemBin}>{item.bin}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
+
+        {/* Footer with Fixed Submit Button */}
+        <View style={styles.footerContainer}>
+             <TouchableOpacity
+                style={[styles.submitButton, isSubmitting && { backgroundColor: '#6EE7B7' }]}
+                onPress={handleCreateVenue}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.submitButtonText}>Tạo địa điểm</Text>
+                )}
+              </TouchableOpacity>
+        </View>
+
       </KeyboardAvoidingView>
     </View>
   );
@@ -665,10 +838,10 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   divider: {
-    height: 4, 
+    height: 4,
     backgroundColor: '#F3F4F6',
     marginVertical: 20,
-    marginHorizontal: -16, 
+    marginHorizontal: -16,
   },
   chipContainer: {
     flexDirection: 'row',
@@ -684,7 +857,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   chipSelected: {
-    backgroundColor: '#ECFDF5', 
+    backgroundColor: '#ECFDF5',
     borderWidth: 1,
     borderColor: Colors.primary,
   },
@@ -761,13 +934,13 @@ const styles = StyleSheet.create({
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12, 
+    gap: 12,
   },
   timeInputWrapper: {
-    flex: 1, 
+    flex: 1,
   },
   dropdownInput: {
-    backgroundColor: '#F9FAFB', 
+    backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
@@ -820,12 +993,59 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  bankModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  bankModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    height: '60%',
+  },
+  bankModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  bankModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  bankSearchInput: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 15,
+  },
+  bankItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  bankItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  bankItemBin: {
+    color: '#6B7280',
+  },
+  footerContainer: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
   submitButton: {
-    backgroundColor: Colors.primary, 
+    backgroundColor: Colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 24,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,

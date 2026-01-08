@@ -24,7 +24,21 @@ export default function MyBookingsScreen() {
     const [bookings, setBookings] = useState<BookingListResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState<Category>('ALL');
+    const [selectedCategory, setSelectedCategory] = useState<'CONFIRMED' | 'AWAITING_CONFIRM' | 'CANCELED'>('CONFIRMED');
+    
+    const { highlightId } = useLocalSearchParams<{ highlightId: string }>();
+
+    // Effect to switch tab if highlightId is present
+    useEffect(() => {
+        if (highlightId && bookings.length > 0) {
+            const target = bookings.find(b => b.id === highlightId);
+            if (target) {
+                if (['CONFIRMED', 'COMPLETED'].includes(target.status)) setSelectedCategory('CONFIRMED');
+                else if (['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(target.status)) setSelectedCategory('AWAITING_CONFIRM');
+                else setSelectedCategory('CANCELED');
+            }
+        }
+    }, [highlightId, bookings]);
 
     const fetchBookings = async () => {
         try {
@@ -137,25 +151,25 @@ export default function MyBookingsScreen() {
     };
 
     const renderItem = ({ item }: { item: BookingListResponse }) => {
-        const statusConfig = getStatusConfig(item.status);
-
+        const isHighlighted = highlightId === item.id;
         return (
-            <TouchableOpacity
-                style={styles.card}
-                onPress={() => {
-                    if (item.status === 'PENDING_PAYMENT') {
-                        router.push({ pathname: '/booking/checkout', params: { bookingId: item.id } });
-                    } else {
-                        router.push(`/booking/detail?id=${item.id}`);
-                    }
-                }}
-                activeOpacity={0.7}
-            >
-                <View style={styles.cardHeader}>
-                    <Text style={styles.venueName} numberOfLines={1}>{item.venue || 'Unknown Venue'}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: statusConfig.color }]}>
-                        <Text style={styles.statusText}>{statusConfig.text}</Text>
-                    </View>
+        <TouchableOpacity 
+            style={[styles.card, isHighlighted && styles.highlightedCard]}
+            onPress={() => {
+                if (item.status === 'PENDING_PAYMENT') {
+                    router.push({
+                        pathname: '/booking/checkout',
+                        params: { bookingId: item.id }
+                    });
+                } else {
+                    router.push(`/booking/detail?id=${item.id}`);
+                }
+            }}
+        >
+            <View style={styles.cardHeader}>
+                <Text style={styles.venueName} numberOfLines={1}>{item.venue || 'Unknown Venue'}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                    <Text style={styles.statusText}>{item.status}</Text>
                 </View>
 
                 <View style={styles.row}>
@@ -328,6 +342,11 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
+    },
+    highlightedCard: {
+        borderWidth: 2,
+        borderColor: Colors.primary,
+        backgroundColor: '#E8F5E9',
     },
     cardHeader: {
         flexDirection: 'row',

@@ -17,8 +17,6 @@ export default function ProfileHeader({ fullName, email, avatar, role }: Profile
       ? fullName.trim()
       : (email && email.split('@')[0]) || 'Người dùng';
 
-  const initial = safeName.charAt(0).toUpperCase();
-
   const upperRole = (role || '').toUpperCase();
   const roleBadge = upperRole.includes('ADMIN')
     ? { label: 'QUẢN TRỊ VIÊN', color: '#FF3B30' }
@@ -32,9 +30,7 @@ export default function ProfileHeader({ fullName, email, avatar, role }: Profile
         {avatar ? (
           <Image source={{ uri: avatar }} style={styles.avatar} />
         ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>{initial}</Text>
-          </View>
+          <Image source={require('../../assets/images/logo.png')} style={styles.avatar} />
         )}
       </View>
       <View style={styles.nameContainer}>
@@ -82,21 +78,6 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     borderWidth: 4,
     borderColor: Colors.white,
-  },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: Colors.white,
-  },
-  avatarText: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: Colors.white,
   },
   nameContainer: {
     flexDirection: 'row',
