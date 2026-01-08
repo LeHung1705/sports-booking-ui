@@ -47,7 +47,6 @@ export default function ScheduleScreen() {
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
 
   // Load data
   useEffect(() => {
@@ -105,7 +104,7 @@ export default function ScheduleScreen() {
     return sum;
   }, 0);
 
-  const handleContinue = async () => {
+  const handleContinue = () => {
     if (selectedSlotIds.length === 0) {
       Alert.alert("Chưa chọn giờ", "Vui lòng chọn ít nhất một khung giờ.");
       return;
@@ -153,26 +152,18 @@ export default function ScheduleScreen() {
     
     const endTimeStr = `${endY}-${endM}-${endD}T${endH}:${endMin}:00`;
 
-    setCreating(true);
-    try {
-        const res = await bookingApi.createBooking({
-            court_id: firstCourtId,
-            start_time: startTimeStr,
-            end_time: endTimeStr,
-            payment_option: "DEPOSIT"
-        });
-
-        router.push({
-            pathname: "/booking/checkout",
-            params: {
-                bookingId: res.id
-            },
-        });
-    } catch (e: any) {
-        Alert.alert("Lỗi đặt sân", e.response?.data?.message || "Không thể tạo đơn hàng. Vui lòng thử lại.");
-    } finally {
-        setCreating(false);
-    }
+    router.push({
+        pathname: "/booking/checkout",
+        params: {
+            venueId: venueId as string,
+            venueName: venueName as string,
+            courtId: firstCourtId,
+            courtName: selectedSlotsData[0].courtName,
+            startTime: startTimeStr,
+            endTime: endTimeStr,
+            totalPrice: totalPrice.toString()
+        },
+    });
   };
 
   const renderDateItem = ({ item }: { item: Date }) => {
@@ -337,19 +328,13 @@ export default function ScheduleScreen() {
         <TouchableOpacity
           style={[
             styles.btnContinue,
-            (selectedSlotIds.length === 0 || creating) && styles.btnDisabled,
+            selectedSlotIds.length === 0 && styles.btnDisabled,
           ]}
-          disabled={selectedSlotIds.length === 0 || creating}
+          disabled={selectedSlotIds.length === 0}
           onPress={handleContinue}
         >
-          {creating ? (
-             <ActivityIndicator color="#fff" size="small" />
-          ) : (
-             <>
-                 <Text style={styles.btnText}>Tiếp tục</Text>
-                 <Ionicons name="arrow-forward" size={20} color="#fff" />
-             </>
-          )}
+             <Text style={styles.btnText}>Tiếp tục</Text>
+             <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
     </View>

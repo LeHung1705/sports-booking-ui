@@ -1,6 +1,7 @@
 import { router } from "expo-router"; // ✅ Dòng này ĐÚNG
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { router } from "expo-router";
 
 // ⚠️ QUAN TRỌNG: Đổi thành IP máy bạn
 // Windows: ipconfig → IPv4 Address

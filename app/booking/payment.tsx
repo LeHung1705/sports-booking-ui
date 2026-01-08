@@ -28,7 +28,9 @@ export default function PaymentScreen() {
   // Generate VietQR URL
   // Format: https://img.vietqr.io/image/<BANK_BIN>-<ACCOUNT_NO>-<TEMPLATE>.png?amount=<AMOUNT>&addInfo=<CONTENT>&accountName=<NAME>
   const transferContent = `${bookingId} da chuyen khoan thanh cong`;
-  const qrUrl = `https://img.vietqr.io/image/${bankBin}-${bankAccount}-compact.png?amount=${totalAmount}&addInfo=${encodeURIComponent(transferContent)}`;
+  const qrUrl = (bankBin && bankAccount) 
+    ? `https://img.vietqr.io/image/${bankBin}-${bankAccount}-compact.png?amount=${totalAmount}&addInfo=${encodeURIComponent(transferContent)}`
+    : null;
 
   const handleConfirmPayment = async () => {
     if (!bookingId) return;
@@ -70,11 +72,17 @@ export default function PaymentScreen() {
           </View>
 
           <View style={styles.qrContainer}>
-             <Image 
-              source={{ uri: qrUrl }} 
-              style={styles.qrImage} 
-              resizeMode="contain"
-            />
+             {qrUrl ? (
+                 <Image 
+                  source={{ uri: qrUrl }} 
+                  style={styles.qrImage} 
+                  resizeMode="contain"
+                />
+             ) : (
+                 <View style={[styles.qrImage, { justifyContent: 'center', alignItems: 'center' }]}>
+                     <Text style={{textAlign: 'center', color: 'red'}}>Chưa có thông tin ngân hàng</Text>
+                 </View>
+             )}
           </View>
 
           <Text style={styles.instruction}>
@@ -85,11 +93,13 @@ export default function PaymentScreen() {
           </Text>
 
            {/* Owner Bank Info Details (Fallback text) */}
-           <View style={styles.bankInfoBox}>
-            <Text style={styles.bankInfoTitle}>Bank Transfer Details:</Text>
-            <Text style={styles.bankInfoText}>Bank: {bankName}</Text>
-            <Text style={styles.bankInfoText}>Account: {bankAccount}</Text>
-          </View>
+           {bankName && bankAccount ? (
+               <View style={styles.bankInfoBox}>
+                <Text style={styles.bankInfoTitle}>Bank Transfer Details:</Text>
+                <Text style={styles.bankInfoText}>Bank: {bankName}</Text>
+                <Text style={styles.bankInfoText}>Account: {bankAccount}</Text>
+              </View>
+           ) : null}
 
         </ScrollView>
         

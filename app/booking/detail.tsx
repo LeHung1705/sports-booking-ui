@@ -1,9 +1,9 @@
 import CustomHeader from '@/components/ui/CustomHeader';
 import PolicyModal from '@/components/ui/PolicyModal';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Image } from 'react-native';
 import { bookingApi } from '../../api/bookingApi';
 import { Colors } from '../../constants/Colors';
 import { BookingDetailResponse } from '../../types/booking';
@@ -15,6 +15,7 @@ const VIETNAM_BANKS = [
 
 export default function BookingDetailScreen() {
     const { id } = useLocalSearchParams();
+    const router = useRouter();
     const [booking, setBooking] = useState<BookingDetailResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [canceling, setCanceling] = useState(false);
@@ -205,9 +206,18 @@ export default function BookingDetailScreen() {
                 {/* Header với tên sân và status */}
                 <View style={styles.header}>
                     <View style={styles.titleRow}>
-                        <Text style={styles.venueName} numberOfLines={2}>
-                            {booking.venue}
-                        </Text>
+                        <TouchableOpacity 
+                            style={styles.venueInfoContainer}
+                            onPress={() => {
+                                if (booking.venueId) {
+                                    router.push(`/venue/${booking.venueId}`);
+                                }
+                            }}
+                        >
+                            <Text style={styles.venueName} numberOfLines={2}>
+                                {booking.venue}
+                            </Text>
+                        </TouchableOpacity>
                         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
                             <Text style={styles.statusText}>{getStatusText(booking.status)}</Text>
                         </View>
@@ -241,7 +251,32 @@ export default function BookingDetailScreen() {
                     <Text style={styles.cardTitle}>Thanh toán</Text>
                     <View style={styles.infoRow}>
                         <Ionicons name="pricetag-outline" size={18} color="#6B7280" />
-                        <Text style={styles.infoText}>Tổng tiền: {booking.totalPrice?.toLocaleString('vi-VN')} VND</Text>
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                            <Text style={styles.infoTextMain}>Tổng tiền: {booking.totalPrice?.toLocaleString('vi-VN')} VND</Text>
+                            
+                            {booking.depositAmount !== undefined && booking.depositAmount < booking.totalPrice ? (
+                                <View style={{ marginTop: 8 }}>
+                                    <View style={styles.paymentStatusRow}>
+                                        <Text style={[styles.paymentStatusLabel, { color: '#F59E0B' }]}>Đã cọc:</Text>
+                                        <Text style={[styles.paymentStatusValue, { color: '#F59E0B' }]}>
+                                            {booking.depositAmount.toLocaleString('vi-VN')} VND
+                                        </Text>
+                                    </View>
+                                    <View style={[styles.paymentStatusRow, { marginTop: 4 }]}>
+                                        <Text style={[styles.paymentStatusLabel, { color: '#EF4444' }]}>Còn lại:</Text>
+                                        <Text style={[styles.paymentStatusValue, { color: '#EF4444' }]}>
+                                            {(booking.totalPrice - booking.depositAmount).toLocaleString('vi-VN')} VND
+                                        </Text>
+                                    </View>
+                                </View>
+                            ) : (booking.depositAmount !== undefined && booking.depositAmount >= booking.totalPrice) ? (
+                                <View style={{ marginTop: 8 }}>
+                                    <Text style={{ color: '#10B981', fontWeight: '600', fontSize: 14 }}>
+                                        Đã thanh toán hết
+                                    </Text>
+                                </View>
+                            ) : null}
+                        </View>
                     </View>
                 </View>
 
@@ -453,13 +488,18 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         marginBottom: 8,
     },
+    venueInfoContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        marginRight: 12,
+    },
     venueName: {
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: '700',
         color: '#111827',
         flex: 1,
-        marginRight: 12,
-        lineHeight: 28,
+        lineHeight: 24,
     },
     courtName: {
         fontSize: 16,
@@ -506,6 +546,47 @@ const styles = StyleSheet.create({
         color: '#4B5563',
         flex: 1,
         lineHeight: 22,
+    },
+    infoTextMain: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1F2937',
+    },
+    paymentStatusRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    paymentStatusLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    paymentStatusValue: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    section: {
+        backgroundColor: 'white',
+        padding: 20,
+        borderRadius: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    sectionTitle: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#1F2937',
+        marginBottom: 16
+    },
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        gap: 12
     },
     cancelButton: {
         backgroundColor: '#EF4444',
