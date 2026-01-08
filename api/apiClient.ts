@@ -1,3 +1,4 @@
+import { router } from "expo-router"; // ✅ Dòng này ĐÚNG
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
@@ -5,7 +6,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 // Windows: ipconfig → IPv4 Address
 // Mac: ifconfig getifaddr en0
 
-const API_BASE_URL = "http://192.168.68.52:8080/api/v1";
+const API_BASE_URL = "http://192.168.102.39:8080/api/v1";
 
 
 const apiClient = axios.create({
@@ -60,9 +61,9 @@ apiClient.interceptors.response.use(
       
       // Token hết hạn → xóa và yêu cầu đăng nhập lại
       if (status === 401) {
-        await AsyncStorage.removeItem("accessToken");
+        await AsyncStorage.multiRemove(["accessToken", "userRole", "userId", "role"]);
         console.log("🔐 Token expired, redirecting to login...");
-        // TODO: Navigate to login
+        router.replace("/login");
       }
       
       // Server error
