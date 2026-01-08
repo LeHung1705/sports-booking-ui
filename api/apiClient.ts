@@ -1,3 +1,4 @@
+import { router } from "expo-router"; // ✅ Dòng này ĐÚNG
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { router } from "expo-router";
@@ -6,7 +7,7 @@ import { router } from "expo-router";
 // Windows: ipconfig → IPv4 Address
 // Mac: ifconfig getifaddr en0
 
-const API_BASE_URL = "http://192.168.102.51:8080/api/v1";
+const API_BASE_URL = "http://192.168.102.39:8080/api/v1";
 
 
 const apiClient = axios.create({
