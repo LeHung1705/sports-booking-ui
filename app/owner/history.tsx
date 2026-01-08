@@ -158,7 +158,7 @@ export default function OwnerHistoryScreen() {
     return (
       <View style={styles.card}>
         <View style={styles.cardRow}>
-           <View>
+           <View style={{ flex: 1 }}>
               <Text style={styles.venueName}>{item.venue}</Text>
               <Text style={styles.courtName}>{item.court}</Text>
               {item.userName && (
@@ -166,11 +166,18 @@ export default function OwnerHistoryScreen() {
                   👤 {item.userName} {item.userId ? `(#${item.userId.substring(0, 8)})` : ''}
                 </Text>
               )}
-              <Text style={styles.bookingIdText}>{item.id}</Text>
+              <Text style={styles.bookingIdText}>ID: {item.id}</Text>
            </View>
-           <Text style={styles.priceHighlight}>
-              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalPrice)}
-           </Text>
+           <View style={{ alignItems: 'flex-end' }}>
+               <Text style={styles.priceHighlight}>
+                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalPrice)}
+               </Text>
+               {item.depositAmount !== undefined && (
+                   <Text style={{ fontSize: 11, color: item.depositAmount < item.totalPrice ? '#F5A623' : '#00A36C', fontWeight: '600', marginTop: 2 }}>
+                       {item.depositAmount < item.totalPrice ? 'THANH TOÁN CỌC' : 'ĐÃ TRẢ HẾT'}
+                   </Text>
+               )}
+           </View>
         </View>
         <View style={styles.cardFooter}>
            <Text style={styles.dateText}>{dateStr} • {timeStr}</Text>

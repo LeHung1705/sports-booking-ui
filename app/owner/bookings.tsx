@@ -194,12 +194,32 @@ export default function OwnerBookingsScreen() {
         </View>
         
         <View style={styles.cardBody}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text style={[styles.infoText, { color: '#888', fontSize: 12 }]}>ID: {item.id.substring(0, 8)}...</Text>
+            {item.userId && (
+              <Text style={[styles.infoText, { color: '#888', fontSize: 12 }]}>UID: {item.userId.substring(0, 8)}...</Text>
+            )}
+          </View>
           <Text style={styles.infoText}>🏟 {item.court} ({item.venue})</Text>
           <Text style={styles.infoText}>📅 {start.date}</Text>
           <Text style={styles.infoText}>⏰ {start.time} - {end.time}</Text>
-          <Text style={styles.priceText}>
-             {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalPrice)}
-          </Text>
+          
+          <View style={{ marginTop: 4 }}>
+            <Text style={styles.priceText}>
+               Tổng: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.totalPrice)}
+            </Text>
+            {item.depositAmount !== undefined && (
+              <Text style={[styles.infoText, { 
+                color: item.depositAmount < item.totalPrice ? '#F5A623' : '#00A36C', 
+                fontWeight: '600',
+                marginTop: 2
+              }]}>
+                {item.depositAmount < item.totalPrice 
+                  ? `Đã cọc: ${item.depositAmount.toLocaleString('vi-VN')} VND (Còn: ${(item.totalPrice - item.depositAmount).toLocaleString('vi-VN')} VND)`
+                  : 'Đã thanh toán hết'}
+              </Text>
+            )}
+          </View>
         </View>
 
         {/* Show Confirm button if status is AWAITING_CONFIRM */}

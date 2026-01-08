@@ -15,6 +15,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -178,6 +179,24 @@ export default function VenueDetailScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Footer with "Đặt sân ngay" button */}
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={styles.bookButton}
+          onPress={() => {
+            router.push({
+              pathname: "/booking/schedule",
+              params: { 
+                venueId: id,
+                venueName: venue.name 
+              }
+            });
+          }}
+        >
+          <Text style={styles.bookButtonText}>Đặt sân ngay</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -330,5 +349,29 @@ const styles = StyleSheet.create({
   },
   reviewsList: {
     gap: 12,
+  },
+  footer: {
+    padding: 16,
+    paddingBottom: 34, // Safe area for bottom
+    backgroundColor: Colors.white,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  bookButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  bookButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: "700",
   },
 });
