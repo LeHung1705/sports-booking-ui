@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
 import type { CourtReview } from "@/types/court";
@@ -9,13 +9,6 @@ interface ReviewCardProps {
 }
 
 export default function ReviewCard({ review }: ReviewCardProps) {
-  const initials =
-    review.userName
-      ?.split(" ")
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase() || "?";
-
   const createdDate = review.createdAt
     ? new Date(review.createdAt).toLocaleDateString("vi-VN")
     : "";
@@ -23,13 +16,14 @@ export default function ReviewCard({ review }: ReviewCardProps) {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
+        <Image 
+          source={require('@/assets/images/logo.png')} 
+          style={styles.avatar} 
+        />
 
         <View style={styles.headerContent}>
           <View style={styles.nameRatingRow}>
-            <Text style={styles.userName}>{review.userName}</Text>
+            <Text style={styles.userName}>{review.userName || "Người dùng ẩn danh"}</Text>
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={14} color="#FFB800" />
               <Text style={styles.ratingText}>{review.rating.toFixed(1)}</Text>
@@ -68,15 +62,8 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: "#f8f9fa",
-    alignItems: "center",
-    justifyContent: "center",
     borderWidth: 1,
     borderColor: "#e9ecef",
-  },
-  avatarText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#495057",
   },
   headerContent: {
     flex: 1,

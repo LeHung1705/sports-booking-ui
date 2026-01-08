@@ -1,7 +1,7 @@
 import CustomHeader from '@/components/ui/CustomHeader';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -24,21 +24,9 @@ export default function MyBookingsScreen() {
     const [bookings, setBookings] = useState<BookingListResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState<'CONFIRMED' | 'AWAITING_CONFIRM' | 'CANCELED'>('CONFIRMED');
+    const [selectedCategory, setSelectedCategory] = useState<Category>('CONFIRMED');
     
     const { highlightId } = useLocalSearchParams<{ highlightId: string }>();
-
-    // Effect to switch tab if highlightId is present
-    useEffect(() => {
-        if (highlightId && bookings.length > 0) {
-            const target = bookings.find(b => b.id === highlightId);
-            if (target) {
-                if (['CONFIRMED', 'COMPLETED'].includes(target.status)) setSelectedCategory('CONFIRMED');
-                else if (['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(target.status)) setSelectedCategory('AWAITING_CONFIRM');
-                else setSelectedCategory('CANCELED');
-            }
-        }
-    }, [highlightId, bookings]);
 
     const fetchBookings = async () => {
         try {
@@ -53,6 +41,20 @@ export default function MyBookingsScreen() {
         }
     };
 
+    // Effect to switch tab if highlightId is present
+    useEffect(() => {
+        if (highlightId && bookings.length > 0) {
+            const target = bookings.find(b => b.id === highlightId);
+            if (target) {
+                if (target.status === 'CONFIRMED') setSelectedCategory('CONFIRMED');
+                else if (['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(target.status)) setSelectedCategory('AWAITING_CONFIRM');
+                else if (target.status === 'COMPLETED') setSelectedCategory('PENDING_REVIEW');
+                else if (target.status === 'REVIEWED') setSelectedCategory('REVIEWED');
+                else setSelectedCategory('CANCELED');
+            }
+        }
+    }, [highlightId, bookings]);
+
     useFocusEffect(
         useCallback(() => {
             fetchBookings();
@@ -64,8 +66,9 @@ export default function MyBookingsScreen() {
         fetchBookings();
     };
 
-    const counts = {
-        CONFIRMED: bookings.filter(b => ['CONFIRMED'].includes(b.status)).length,
+    const counts: Record<Category, number> = {
+        ALL: bookings.length,
+        CONFIRMED: bookings.filter(b => b.status === 'CONFIRMED').length,
         AWAITING_CONFIRM: bookings.filter(b => ['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(b.status)).length,
         CANCELED: bookings.filter(b => ['CANCELED', 'REFUND_PENDING', 'REJECTED', 'FAILED'].includes(b.status)).length,
         PENDING_REVIEW: bookings.filter(b => b.status === 'COMPLETED').length,
@@ -78,14 +81,14 @@ export default function MyBookingsScreen() {
         CONFIRMED: 'Đã duyệt',
         AWAITING_CONFIRM: 'Chờ duyệt',
         CANCELED: 'Đã hủy',
-        PENDING_REVIEW: 'Chưa đánh giá',
+        PENDING_REVIEW: 'Hoàn thành',
         REVIEWED: 'Đã đánh giá',
     };
 
     const filteredBookings = bookings.filter(b => {
         switch (selectedCategory) {
             case 'ALL': return true;
-            case 'CONFIRMED': return ['CONFIRMED'].includes(b.status);
+            case 'CONFIRMED': return b.status === 'CONFIRMED';
             case 'AWAITING_CONFIRM': return ['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(b.status);
             case 'CANCELED': return ['CANCELED', 'REFUND_PENDING', 'REJECTED', 'FAILED'].includes(b.status);
             case 'PENDING_REVIEW': return b.status === 'COMPLETED';
@@ -120,56 +123,35 @@ export default function MyBookingsScreen() {
 
     const formatDateTime = (dateString: string) => {
         const date = new Date(dateString);
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        const bookingDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-        let dayPrefix = '';
-        if (bookingDate.getTime() === today.getTime()) {
-            dayPrefix = 'Hôm nay, ';
-        } else if (bookingDate.getTime() === yesterday.getTime()) {
-            dayPrefix = 'Hôm qua, ';
-        }
-
-        const timeStr = date.toLocaleTimeString('vi-VN', {
-            hour: '2-digit',
-            minute: '2-digit'
+        return date.toLocaleString('vi-VN', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit'
         });
-
-        if (dayPrefix) {
-            return `${dayPrefix}${timeStr}`;
-        }
-
-        return date.toLocaleDateString('vi-VN', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric'
-        }) + `, ${timeStr}`;
     };
 
     const renderItem = ({ item }: { item: BookingListResponse }) => {
         const isHighlighted = highlightId === item.id;
+        const statusConfig = getStatusConfig(item.status);
+
         return (
-        <TouchableOpacity 
-            style={[styles.card, isHighlighted && styles.highlightedCard]}
-            onPress={() => {
-                if (item.status === 'PENDING_PAYMENT') {
-                    router.push({
-                        pathname: '/booking/checkout',
-                        params: { bookingId: item.id }
-                    });
-                } else {
-                    router.push(`/booking/detail?id=${item.id}`);
-                }
-            }}
-        >
-            <View style={styles.cardHeader}>
-                <Text style={styles.venueName} numberOfLines={1}>{item.venue || 'Unknown Venue'}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-                    <Text style={styles.statusText}>{item.status}</Text>
+            <TouchableOpacity 
+                style={[styles.card, isHighlighted && styles.highlightedCard]}
+                onPress={() => {
+                    if (item.status === 'PENDING_PAYMENT') {
+                        router.push({
+                            pathname: '/booking/checkout',
+                            params: { bookingId: item.id }
+                        });
+                    } else {
+                        router.push(`/booking/detail?id=${item.id}`);
+                    }
+                }}
+            >
+                <View style={styles.cardHeader}>
+                    <Text style={styles.venueName} numberOfLines={1}>{item.venue || 'Unknown Venue'}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: statusConfig.color }]}>
+                        <Text style={styles.statusText}>{statusConfig.text}</Text>
+                    </View>
                 </View>
 
                 <View style={styles.row}>
@@ -221,16 +203,9 @@ export default function MyBookingsScreen() {
 
     return (
         <View style={styles.container}>
-            {/* StatusBar - Điều chỉnh cho từng platform */}
-            <StatusBar
-                barStyle="dark-content"
-                backgroundColor="#F9FAFB"
-                translucent={Platform.OS === 'android'}
-            />
-
+            <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
             <CustomHeader title="Lịch sử đặt sân" showBackButton={true} />
 
-            {/* Category Tabs - Dùng View thay vì FlatList cho đơn giản */}
             <View style={styles.categoryWrapper}>
                 <FlatList
                     horizontal
@@ -255,7 +230,7 @@ export default function MyBookingsScreen() {
                                 ]}>
                                     {categoryLabels[cat]}
                                 </Text>
-                                {cat !== 'ALL' && counts[cat] > 0 && (
+                                {counts[cat] > 0 && (
                                     <View style={[
                                         styles.categoryCount,
                                         isSelected && styles.categoryCountSelected
@@ -299,7 +274,6 @@ export default function MyBookingsScreen() {
                     }
                     ListEmptyComponent={renderEmptyComponent}
                     showsVerticalScrollIndicator={true}
-                    removeClippedSubviews={Platform.OS === 'android'}
                 />
             )}
         </View>
@@ -318,7 +292,6 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 12,
     },
     loadingText: {
         fontSize: 14,
@@ -336,7 +309,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderRadius: 12,
         padding: 16,
-        marginBottom: 12,
+        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -346,7 +319,7 @@ const styles = StyleSheet.create({
     highlightedCard: {
         borderWidth: 2,
         borderColor: Colors.primary,
-        backgroundColor: '#E8F5E9',
+        backgroundColor: '#f0fff4',
     },
     cardHeader: {
         flexDirection: 'row',
@@ -416,20 +389,15 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         textAlign: 'center',
         marginTop: 12,
-        lineHeight: 24,
     },
-    // Category Styles
     categoryWrapper: {
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
-        minHeight: 56,
-        justifyContent: 'center',
     },
     categoryListContent: {
         paddingHorizontal: 16,
         paddingVertical: 12,
-        alignItems: 'center',
     },
     categoryBtn: {
         flexDirection: 'row',

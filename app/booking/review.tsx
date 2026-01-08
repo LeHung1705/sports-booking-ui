@@ -87,7 +87,7 @@ export default function ReviewScreen() {
                 comment: reviewText.trim(),
             };
 
-            const response = await reviewApi.creteReview(reviewRequest);
+            const response = await reviewApi.createReview(reviewRequest);
             console.log('Review created successfully:', response);
             
             Alert.alert(
@@ -195,10 +195,10 @@ export default function ReviewScreen() {
                 <TouchableOpacity 
                     style={[
                         styles.bottomSubmitButton,
-                        (!canSubmit || loading) && styles.bottomSubmitButtonDisabled
+                        loading && styles.bottomSubmitButtonDisabled
                     ]}
                     onPress={handleSubmit}
-                    disabled={!canSubmit || loading}
+                    disabled={loading}
                     activeOpacity={0.8}
                 >
                     {loading ? (
