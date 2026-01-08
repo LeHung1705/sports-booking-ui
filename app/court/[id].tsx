@@ -1,10 +1,10 @@
 import { courtApi } from "@/api/courtApi";
-import type { CourtDetail, CourtReview } from "@/types/court";
+import type { CourtDetail } from "@/types/court";
 import { Colors } from "@/constants/Colors";
 import CustomHeader from "@/components/ui/CustomHeader";
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -14,14 +14,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import ReviewCard from "@/components/common/ReviewCard";
 
 export default function CourtDetailScreen() {
   const router = useRouter();
   const { id, venueId } = useLocalSearchParams<{ id: string; venueId?: string }>();
 
   const [court, setCourt] = useState<CourtDetail | null>(null);
-  const [reviews, setReviews] = useState<CourtReview[]>([]);
   const [loading, setLoading] = useState(true);
 
   const getSportLabel = (sportKey: string): string => {
@@ -48,13 +46,8 @@ export default function CourtDetailScreen() {
 
     const load = async () => {
       try {
-        const [courtRes, reviewsRes] = await Promise.all([
-          courtApi.getCourtDetail(venueId, id),
-          courtApi.getCourtReviews(id).catch(() => []),
-        ]);
-
+        const courtRes = await courtApi.getCourtDetail(venueId, id);
         setCourt(courtRes);
-        setReviews(reviewsRes);
       } catch (e) {
         console.error("Load court detail failed", e);
       } finally {
@@ -80,12 +73,6 @@ export default function CourtDetailScreen() {
         }
     });
   };
-
-  const avgRating = useMemo(() => {
-    if (!reviews.length) return null;
-    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
-    return sum / reviews.length;
-  }, [reviews]);
 
   if (loading) {
     return (
@@ -128,22 +115,6 @@ export default function CourtDetailScreen() {
             <View style={styles.mainCard}>
               <View style={styles.courtHeaderRow}>
                 <Text style={styles.courtName}>{court.name}</Text>
-
-                <View style={styles.courtRatingInline}>
-                  <Ionicons
-                    name="star"
-                    size={18}
-                    color={avgRating ? "#FFB800" : Colors.textSecondary}
-                  />
-                  {avgRating ? (
-                    <>
-                      <Text style={styles.ratingValue}>{avgRating.toFixed(1)}</Text>
-                      <Text style={styles.ratingCount}>({reviews.length})</Text>
-                    </>
-                  ) : (
-                    <Text style={styles.ratingEmpty}></Text>
-                  )}
-                </View>
               </View>
 
               <View style={styles.divider} />
@@ -165,29 +136,6 @@ export default function CourtDetailScreen() {
                   </View>
                 </View>
               </View>
-            </View>
-
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Đánh giá</Text>
-                {reviews.length > 0 && (
-                  <Text style={styles.reviewCount}>{reviews.length} đánh giá</Text>
-                )}
-              </View>
-
-              {!reviews.length ? (
-                <View style={styles.emptyReviews}>
-                  <Text style={styles.emptyReviewsText}>
-                    Chưa có đánh giá cho sân này.
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.reviewsList}>
-                  {reviews.map((r) => (
-                    <ReviewCard key={r.id} review={r} />
-                  ))}
-                </View>
-              )}
             </View>
           </ScrollView>
         </View>
@@ -329,28 +277,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
     lineHeight: 26,
   },
-  courtRatingInline: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexShrink: 0,
-    marginTop: 2,
-  },
-  ratingValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: Colors.text,
-    marginLeft: 4,
-  },
-  ratingCount: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginLeft: 4,
-  },
-  ratingEmpty: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginLeft: 4,
-  },
   divider: {
     height: 1,
     backgroundColor: "#f0f0f0",
@@ -380,39 +306,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: Colors.primary,
-  },
-  section: {
-    paddingHorizontal: 16,
-    marginTop: 8,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.text,
-  },
-  reviewCount: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontWeight: "500",
-  },
-  emptyReviews: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 40,
-  },
-  emptyReviewsText: {
-    fontSize: 15,
-    color: Colors.textSecondary,
-    textAlign: "center",
-  },
-  reviewsList: {
-    gap: 12,
   },
   footer: {
     position: "absolute",

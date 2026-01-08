@@ -1,7 +1,7 @@
-import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View, Image } from "react-native";
 import { Colors } from "@/constants/Colors";
 import type { VenueDetailCourtItem } from "@/types/venue";
+import React from "react";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface CourtCardProps {
   court: VenueDetailCourtItem;
@@ -60,7 +60,7 @@ export default function CourtCard({ court, onPress }: CourtCardProps) {
           activeOpacity={0.85}
           onPress={onPress}
         >
-          <Text style={styles.primaryButtonText}>Đặt sân</Text>
+          <Text style={styles.primaryButtonText}>Xem chi tiết</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

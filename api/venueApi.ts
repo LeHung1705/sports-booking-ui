@@ -2,6 +2,7 @@ import apiClient from "./apiClient";
 import type { VenueDetail, VenueListItem, VenueListRequest } from "@/types/venue";
 import type { ApiVenueAvailabilityResponse } from "@/types/booking";
 import type { VenueUpdateRequest } from "@/types/venue";
+import type { CourtReview, PageResponse } from "@/types/court";
 
 export const venueApi = {
   async listVenues(params?: VenueListRequest): Promise<VenueListItem[]> {
@@ -56,5 +57,9 @@ export const venueApi = {
       const res = await apiClient.get<VenueDetail[]>("/venues/my-venues");
       return res.data;
   },
-
+  
+  async getVenueReviews(venueId: string): Promise<CourtReview[]> {
+    const res = await apiClient.get<PageResponse<CourtReview>>(`/venues/${venueId}/reviews`);
+    return res.data.content;
+  },
 };

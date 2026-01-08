@@ -2,61 +2,58 @@ import CustomHeader from '@/components/ui/CustomHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+    ActivityIndicator,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    Platform,
+    StatusBar
+} from 'react-native';
 import { bookingApi } from '../../api/bookingApi';
 import { Colors } from '../../constants/Colors';
 import { BookingListResponse } from '../../types/booking';
+
+type Category = 'ALL' | 'CONFIRMED' | 'AWAITING_CONFIRM' | 'CANCELED' | 'PENDING_REVIEW' | 'REVIEWED';
 
 export default function MyBookingsScreen() {
     const router = useRouter();
     const [bookings, setBookings] = useState<BookingListResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState<'CONFIRMED' | 'AWAITING_CONFIRM' | 'CANCELED'>('CONFIRMED');
+    const [selectedCategory, setSelectedCategory] = useState<Category>('CONFIRMED');
     
     const { highlightId } = useLocalSearchParams<{ highlightId: string }>();
-
-    // Effect to switch tab if highlightId is present
-    useEffect(() => {
-        if (highlightId && bookings.length > 0) {
-            const target = bookings.find(b => b.id === highlightId);
-            if (target) {
-                if (['CONFIRMED', 'COMPLETED'].includes(target.status)) setSelectedCategory('CONFIRMED');
-                else if (['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(target.status)) setSelectedCategory('AWAITING_CONFIRM');
-                else setSelectedCategory('CANCELED');
-            }
-        }
-    }, [highlightId, bookings]);
 
     const fetchBookings = async () => {
         try {
             const data = await bookingApi.getMyBookings();
-            // Sort by date descending (newest first)
             const sorted = data.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
             setBookings(sorted);
         } catch (error) {
-            console.error('Error fetching bookings:', error);
+            console.error('Lỗi khi fetch bookings:', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
     };
 
-    const getCounts = () => {
-        const confirmed = bookings.filter(b => ['CONFIRMED', 'COMPLETED'].includes(b.status)).length;
-        const awaiting = bookings.filter(b => ['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(b.status)).length;
-        const canceled = bookings.filter(b => ['CANCELED', 'REFUND_PENDING', 'REJECTED', 'FAILED'].includes(b.status)).length;
-        return { CONFIRMED: confirmed, AWAITING_CONFIRM: awaiting, CANCELED: canceled };
-    };
-
-    const counts = getCounts();
-
-    const filteredBookings = bookings.filter(b => {
-        if (selectedCategory === 'CONFIRMED') return ['CONFIRMED', 'COMPLETED'].includes(b.status);
-        if (selectedCategory === 'AWAITING_CONFIRM') return ['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(b.status);
-        if (selectedCategory === 'CANCELED') return ['CANCELED', 'REFUND_PENDING', 'REJECTED', 'FAILED'].includes(b.status);
-        return false;
-    });
+    // Effect to switch tab if highlightId is present
+    useEffect(() => {
+        if (highlightId && bookings.length > 0) {
+            const target = bookings.find(b => b.id === highlightId);
+            if (target) {
+                if (target.status === 'CONFIRMED') setSelectedCategory('CONFIRMED');
+                else if (['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(target.status)) setSelectedCategory('AWAITING_CONFIRM');
+                else if (target.status === 'COMPLETED') setSelectedCategory('PENDING_REVIEW');
+                else if (target.status === 'REVIEWED') setSelectedCategory('REVIEWED');
+                else setSelectedCategory('CANCELED');
+            }
+        }
+    }, [highlightId, bookings]);
 
     useFocusEffect(
         useCallback(() => {
@@ -69,14 +66,58 @@ export default function MyBookingsScreen() {
         fetchBookings();
     };
 
-    const getStatusColor = (status: string) => {
+    const counts: Record<Category, number> = {
+        ALL: bookings.length,
+        CONFIRMED: bookings.filter(b => b.status === 'CONFIRMED').length,
+        AWAITING_CONFIRM: bookings.filter(b => ['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(b.status)).length,
+        CANCELED: bookings.filter(b => ['CANCELED', 'REFUND_PENDING', 'REJECTED', 'FAILED'].includes(b.status)).length,
+        PENDING_REVIEW: bookings.filter(b => b.status === 'COMPLETED').length,
+        REVIEWED: bookings.filter(b => b.status === 'REVIEWED').length,
+    };
+
+    const categories: Category[] = ['ALL', 'CONFIRMED', 'AWAITING_CONFIRM', 'CANCELED', 'PENDING_REVIEW', 'REVIEWED'];
+    const categoryLabels: Record<Category, string> = {
+        ALL: 'Tất cả',
+        CONFIRMED: 'Đã duyệt',
+        AWAITING_CONFIRM: 'Chờ duyệt',
+        CANCELED: 'Đã hủy',
+        PENDING_REVIEW: 'Hoàn thành',
+        REVIEWED: 'Đã đánh giá',
+    };
+
+    const filteredBookings = bookings.filter(b => {
+        switch (selectedCategory) {
+            case 'ALL': return true;
+            case 'CONFIRMED': return b.status === 'CONFIRMED';
+            case 'AWAITING_CONFIRM': return ['AWAITING_CONFIRM', 'PENDING_PAYMENT', 'PENDING'].includes(b.status);
+            case 'CANCELED': return ['CANCELED', 'REFUND_PENDING', 'REJECTED', 'FAILED'].includes(b.status);
+            case 'PENDING_REVIEW': return b.status === 'COMPLETED';
+            case 'REVIEWED': return b.status === 'REVIEWED';
+            default: return false;
+        }
+    });
+
+    const getStatusConfig = (status: string) => {
         switch (status) {
-            case 'CONFIRMED': return '#4CAF50'; // Green
-            case 'PENDING': return '#FFC107'; // Amber
-            case 'CANCELED': return '#F44336'; // Red
-            case 'COMPLETED': return '#9E9E9E'; // Grey
-            case 'FAILED': return '#F44336'; // Red
-            default: return '#2196F3'; // Blue
+            case 'CONFIRMED':
+                return { color: '#10B981', text: 'Đã xác nhận' };
+            case 'PENDING':
+            case 'PENDING_PAYMENT':
+                return { color: '#F59E0B', text: 'Chờ thanh toán' };
+            case 'AWAITING_CONFIRM':
+                return { color: '#F59E0B', text: 'Chờ xác nhận' };
+            case 'CANCELED':
+            case 'REJECTED':
+            case 'FAILED':
+                return { color: '#EF4444', text: 'Đã hủy' };
+            case 'COMPLETED':
+                return { color: '#6B7280', text: 'Hoàn thành' };
+            case 'REVIEWED':
+                return { color: '#3B82F6', text: 'Đã đánh giá' };
+            case 'REFUND_PENDING':
+                return { color: '#8B5CF6', text: 'Hoàn tiền' };
+            default:
+                return { color: '#3B82F6', text: status };
         }
     };
 
@@ -90,106 +131,149 @@ export default function MyBookingsScreen() {
 
     const renderItem = ({ item }: { item: BookingListResponse }) => {
         const isHighlighted = highlightId === item.id;
+        const statusConfig = getStatusConfig(item.status);
+
         return (
-        <TouchableOpacity 
-            style={[styles.card, isHighlighted && styles.highlightedCard]}
-            onPress={() => {
-                if (item.status === 'PENDING_PAYMENT') {
-                    router.push({
-                        pathname: '/booking/checkout',
-                        params: { bookingId: item.id }
-                    });
-                } else {
-                    router.push(`/booking/detail?id=${item.id}`);
-                }
-            }}
-        >
-            <View style={styles.cardHeader}>
-                <Text style={styles.venueName} numberOfLines={1}>{item.venue || 'Unknown Venue'}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-                    <Text style={styles.statusText}>{item.status}</Text>
+            <TouchableOpacity 
+                style={[styles.card, isHighlighted && styles.highlightedCard]}
+                onPress={() => {
+                    if (item.status === 'PENDING_PAYMENT') {
+                        router.push({
+                            pathname: '/booking/checkout',
+                            params: { bookingId: item.id }
+                        });
+                    } else {
+                        router.push(`/booking/detail?id=${item.id}`);
+                    }
+                }}
+            >
+                <View style={styles.cardHeader}>
+                    <Text style={styles.venueName} numberOfLines={1}>{item.venue || 'Unknown Venue'}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: statusConfig.color }]}>
+                        <Text style={styles.statusText}>{statusConfig.text}</Text>
+                    </View>
                 </View>
-            </View>
-            
-            <View style={styles.row}>
-                <Ionicons name="location-outline" size={16} color="#666" />
-                <Text style={styles.courtName}>{item.court}</Text>
-            </View>
 
-            <View style={styles.row}>
-                <Ionicons name="time-outline" size={16} color="#666" />
-                <Text style={styles.dateText}>{formatDateTime(item.startTime)}</Text>
-            </View>
+                <View style={styles.row}>
+                    <Ionicons name="location-outline" size={16} color="#666" />
+                    <Text style={styles.courtName}>{item.court}</Text>
+                </View>
 
-            <View style={styles.divider} />
+                <View style={styles.row}>
+                    <Ionicons name="time-outline" size={16} color="#666" />
+                    <Text style={styles.dateText}>{formatDateTime(item.startTime)}</Text>
+                </View>
 
-            <View style={styles.footer}>
-                <Text style={styles.totalLabel}>Total Price</Text>
-                <Text style={styles.price}>{item.totalPrice?.toLocaleString('vi-VN')} VND</Text>
-            </View>
-        </TouchableOpacity>
-    )};
+                <View style={styles.divider} />
+
+                <View style={styles.footer}>
+                    <Text style={styles.totalLabel}>Tổng tiền</Text>
+                    <Text style={styles.price}>{item.totalPrice?.toLocaleString('vi-VN')} VND</Text>
+                </View>
+
+                {item.status === 'COMPLETED' && (
+                    <TouchableOpacity
+                        style={styles.reviewBtn}
+                        onPress={() => router.push({
+                            pathname: '/booking/review',
+                            params: {
+                                bookingId: item.id,
+                                courtName: item.court,
+                                venueName: item.venue
+                            }
+                        })}
+                    >
+                        <Text style={styles.reviewBtnText}>Viết đánh giá</Text>
+                    </TouchableOpacity>
+                )}
+            </TouchableOpacity>
+        );
+    };
+
+    const renderEmptyComponent = () => (
+        <View style={styles.emptyContainer}>
+            <Ionicons name="calendar-outline" size={64} color="#D1D5DB" />
+            <Text style={styles.emptyText}>
+                {selectedCategory === 'ALL'
+                    ? 'Bạn chưa có đơn đặt sân nào'
+                    : `Không có đơn đặt sân trong mục "${categoryLabels[selectedCategory]}"`}
+            </Text>
+        </View>
+    );
 
     return (
         <View style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
             <CustomHeader title="Lịch sử đặt sân" showBackButton={true} />
-            
-            <View style={styles.categoryContainer}>
-                <TouchableOpacity 
-                    style={[
-                        styles.categoryBtn, 
-                        { borderColor: Colors.primary, backgroundColor: selectedCategory === 'CONFIRMED' ? Colors.primary : '#fff' }
-                    ]}
-                    onPress={() => setSelectedCategory('CONFIRMED')}
-                >
-                    <Text style={[styles.categoryText, { color: selectedCategory === 'CONFIRMED' ? '#fff' : Colors.primary }]}>
-                        Đã duyệt ({counts.CONFIRMED})
-                    </Text>
-                </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={[
-                        styles.categoryBtn, 
-                        { borderColor: '#FFC107', backgroundColor: selectedCategory === 'AWAITING_CONFIRM' ? '#FFC107' : '#fff' }
-                    ]}
-                    onPress={() => setSelectedCategory('AWAITING_CONFIRM')}
-                >
-                    <Text style={[styles.categoryText, { color: selectedCategory === 'AWAITING_CONFIRM' ? '#fff' : '#FFC107' }]}>
-                        Chờ duyệt ({counts.AWAITING_CONFIRM})
-                    </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                    style={[
-                        styles.categoryBtn, 
-                        { borderColor: '#F44336', backgroundColor: selectedCategory === 'CANCELED' ? '#F44336' : '#fff' }
-                    ]}
-                    onPress={() => setSelectedCategory('CANCELED')}
-                >
-                    <Text style={[styles.categoryText, { color: selectedCategory === 'CANCELED' ? '#fff' : '#F44336' }]}>
-                        Đã hủy ({counts.CANCELED})
-                    </Text>
-                </TouchableOpacity>
+            <View style={styles.categoryWrapper}>
+                <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    data={categories}
+                    keyExtractor={(item) => item}
+                    contentContainerStyle={styles.categoryListContent}
+                    renderItem={({ item: cat }) => {
+                        const isSelected = selectedCategory === cat;
+                        return (
+                            <TouchableOpacity
+                                style={[
+                                    styles.categoryBtn,
+                                    isSelected && styles.categoryBtnSelected,
+                                ]}
+                                onPress={() => setSelectedCategory(cat)}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={[
+                                    styles.categoryText,
+                                    isSelected && styles.categoryTextSelected
+                                ]}>
+                                    {categoryLabels[cat]}
+                                </Text>
+                                {counts[cat] > 0 && (
+                                    <View style={[
+                                        styles.categoryCount,
+                                        isSelected && styles.categoryCountSelected
+                                    ]}>
+                                        <Text style={[
+                                            styles.categoryCountText,
+                                            isSelected && styles.categoryCountTextSelected
+                                        ]}>
+                                            {counts[cat]}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    }}
+                />
             </View>
 
             {loading && !refreshing ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={Colors.primary} />
+                    <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
                 </View>
             ) : (
                 <FlatList
                     data={filteredBookings}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
-                    contentContainerStyle={styles.listContent}
+                    contentContainerStyle={[
+                        styles.listContent,
+                        filteredBookings.length === 0 && styles.emptyListContent
+                    ]}
+                    style={styles.mainList}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={[Colors.primary]}
+                            tintColor={Colors.primary}
+                        />
                     }
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>No bookings found in this category</Text>
-                        </View>
-                    }
+                    ListEmptyComponent={renderEmptyComponent}
+                    showsVerticalScrollIndicator={true}
                 />
             )}
         </View>
@@ -199,21 +283,33 @@ export default function MyBookingsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F9FAFB',
+    },
+    mainList: {
+        flex: 1,
     },
     center: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
+    loadingText: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginTop: 8,
+    },
     listContent: {
         padding: 16,
+        paddingBottom: 32,
+    },
+    emptyListContent: {
+        flexGrow: 1,
     },
     card: {
         backgroundColor: 'white',
         borderRadius: 12,
         padding: 16,
-        marginBottom: 12,
+        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -223,94 +319,141 @@ const styles = StyleSheet.create({
     highlightedCard: {
         borderWidth: 2,
         borderColor: Colors.primary,
-        backgroundColor: '#E8F5E9',
+        backgroundColor: '#f0fff4',
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 12
     },
     venueName: {
         fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
+        fontWeight: '600',
+        color: '#1F2937',
         flex: 1,
-        marginRight: 8,
+        marginRight: 12
     },
     statusBadge: {
-        paddingHorizontal: 8,
+        paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 4,
+        borderRadius: 6
     },
     statusText: {
         color: 'white',
         fontSize: 12,
-        fontWeight: 'bold',
+        fontWeight: '500'
     },
     row: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 4,
+        marginTop: 6
     },
     courtName: {
         fontSize: 14,
-        color: '#666',
-        marginLeft: 6,
+        color: '#4B5563',
+        marginLeft: 8
     },
     dateText: {
         fontSize: 14,
-        color: '#666',
-        marginLeft: 6,
+        color: '#4B5563',
+        marginLeft: 8
     },
     divider: {
         height: 1,
-        backgroundColor: '#eee',
-        marginVertical: 12,
+        backgroundColor: '#F3F4F6',
+        marginVertical: 12
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'center'
     },
     totalLabel: {
         fontSize: 14,
-        color: '#888',
+        color: '#6B7280'
     },
     price: {
         fontSize: 16,
-        fontWeight: 'bold',
-        color: Colors.primary,
+        fontWeight: '700',
+        color: Colors.primary
     },
     emptyContainer: {
-        padding: 40,
+        flex: 1,
+        justifyContent: 'center',
         alignItems: 'center',
+        paddingVertical: 60,
     },
     emptyText: {
         fontSize: 16,
-        color: '#999',
+        color: '#6B7280',
+        textAlign: 'center',
+        marginTop: 12,
     },
-    categoryContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+    categoryWrapper: {
         backgroundColor: '#fff',
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
-        gap: 10,
+        borderBottomColor: '#F3F4F6',
+    },
+    categoryListContent: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
     },
     categoryBtn: {
-        flex: 1,
-        paddingVertical: 8,
-        paddingHorizontal: 4,
-        borderRadius: 20,
-        borderWidth: 1,
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#fff',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+        gap: 6,
+        marginRight: 8,
+    },
+    categoryBtnSelected: {
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
     },
     categoryText: {
         fontSize: 12,
+        fontWeight: '500',
+        color: '#6B7280',
+    },
+    categoryTextSelected: {
+        color: '#fff',
         fontWeight: '600',
+    },
+    categoryCount: {
+        backgroundColor: '#E5E7EB',
+        borderRadius: 10,
+        minWidth: 18,
+        height: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+    },
+    categoryCountSelected: {
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    categoryCountText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#4B5563',
+    },
+    categoryCountTextSelected: {
+        color: '#fff',
+    },
+    reviewBtn: {
+        marginTop: 12,
+        paddingVertical: 10,
+        backgroundColor: Colors.primary,
+        borderRadius: 8,
+        alignItems: 'center'
+    },
+    reviewBtnText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 14
     },
 });

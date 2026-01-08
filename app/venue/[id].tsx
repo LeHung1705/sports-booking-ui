@@ -1,7 +1,9 @@
 import { venueApi } from "@/api/venueApi";
 import CourtCard from "@/components/common/CourtCard";
+import ReviewCard from "@/components/common/ReviewCard";
 import CustomHeader from "@/components/ui/CustomHeader";
 import { Colors } from "@/constants/Colors";
+import type { CourtReview } from "@/types/court";
 import type { VenueDetail, VenueDetailCourtItem } from "@/types/venue";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -13,7 +15,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -22,6 +23,7 @@ export default function VenueDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [venue, setVenue] = useState<VenueDetail | null>(null);
+  const [reviews, setReviews] = useState<CourtReview[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,8 +31,12 @@ export default function VenueDetailScreen() {
 
     const load = async () => {
       try {
-        const data = await venueApi.getVenueDetail(id);
-        setVenue(data);
+        const [venueData, reviewsData] = await Promise.all([
+          venueApi.getVenueDetail(id),
+          venueApi.getVenueReviews(id).catch(() => []),
+        ]);
+        setVenue(venueData);
+        setReviews(reviewsData);
       } catch (e) {
         console.error("Load venue detail failed", e);
       } finally {
@@ -41,22 +47,10 @@ export default function VenueDetailScreen() {
     load();
   }, [id]);
 
-  const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.push("/");
-    }
-  };
-
   const handlePressCourt = (court: VenueDetailCourtItem) => {
     router.push({
-      pathname: "/booking/schedule",
-      params: {
-        venueId: id,
-        courtId: court.id,
-        venueName: venue?.name
-      },
+      pathname: "/court/[id]",
+      params: { id: court.id, venueId: id },
     });
   };
 
@@ -134,18 +128,6 @@ export default function VenueDetailScreen() {
               <Text style={styles.descriptionText}>{venue.description}</Text>
             </View>
           )}
-
-          {venue.courts.length > 0 && (
-            <TouchableOpacity
-                style={styles.bookButton}
-                onPress={() => {
-                    // Default to first court or handle logic to choose court
-                    handlePressCourt(venue.courts[0]);
-                }}
-            >
-                <Text style={styles.bookButtonText}>Đặt ngay</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         <View style={styles.section}>
@@ -174,6 +156,27 @@ export default function VenueDetailScreen() {
             )}
           </View>
         </View>
+
+        {/* Reviews Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Đánh giá ({reviews.length})</Text>
+            </View>
+
+            {!reviews.length ? (
+              <View style={styles.emptyReviews}>
+                <Text style={styles.emptyReviewsText}>Chưa có đánh giá nào.</Text>
+              </View>
+            ) : (
+              <View style={styles.reviewsList}>
+                {reviews.map((r) => (
+                  <ReviewCard key={r.id} review={r} />
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -189,23 +192,6 @@ const styles = StyleSheet.create({
   },
   loadingText: { color: Colors.textSecondary, fontSize: 13 },
   errorText: { color: Colors.textSecondary, fontSize: 14 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: 48,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    backgroundColor: Colors.white,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
-  },
-  backButton: { padding: 4, marginRight: 8 },
-  headerTitle: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: "600",
-    color: Colors.text,
-  },
   scrollContent: {
     paddingBottom: 40,
   },
@@ -306,6 +292,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.text,
   },
+  sectionHeader: {
+    marginBottom: 12,
+  },
   courtHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -329,17 +318,17 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: "center",
   },
-  bookButton: {
-    marginTop: 16,
-    backgroundColor: Colors.primary,
-    paddingVertical: 12,
-    borderRadius: 12,
+  emptyReviews: {
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 24,
   },
-  bookButtonText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: "700",
+  emptyReviewsText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: "center",
+  },
+  reviewsList: {
+    gap: 12,
   },
 });
