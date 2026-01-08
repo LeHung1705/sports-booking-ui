@@ -56,5 +56,8 @@ export const venueApi = {
       const res = await apiClient.get<VenueDetail[]>("/venues/my-venues");
       return res.data;
   },
-
+  // async updateVenue(id: string, data: any): Promise<VenueDetail> {
+  //     const res = await apiClient.put<VenueDetail>(`/venues/${id}`, data);
+  //     return res.data;
+  // }
 };
