@@ -167,8 +167,27 @@ export default function MyBookingsScreen() {
                 <View style={styles.divider} />
 
                 <View style={styles.footer}>
-                    <Text style={styles.totalLabel}>Tổng tiền</Text>
-                    <Text style={styles.price}>{item.totalPrice?.toLocaleString('vi-VN')} VND</Text>
+                    <View>
+                        <Text style={styles.totalLabel}>Tổng tiền</Text>
+                        <Text style={styles.price}>{item.totalPrice?.toLocaleString('vi-VN')} VND</Text>
+                    </View>
+                    
+                    {item.depositAmount !== undefined && item.depositAmount < item.totalPrice ? (
+                        <View style={{alignItems: 'flex-end'}}>
+                            <Text style={[styles.totalLabel, {color: '#F59E0B', fontSize: 13}]}>
+                                Đã cọc: {item.depositAmount.toLocaleString('vi-VN')} VND
+                            </Text>
+                            <Text style={[styles.totalLabel, {color: '#EF4444', marginTop: 2, fontSize: 13}]}>
+                                Cần thanh toán: {(item.totalPrice - item.depositAmount).toLocaleString('vi-VN')} VND
+                            </Text>
+                        </View>
+                    ) : (item.depositAmount !== undefined && item.depositAmount >= item.totalPrice) ? (
+                        <View style={{alignItems: 'flex-end'}}>
+                            <Text style={[styles.totalLabel, {color: '#10B981', fontWeight: '500'}]}>
+                                Đã thanh toán hết
+                            </Text>
+                        </View>
+                    ) : null}
                 </View>
 
                 {item.status === 'COMPLETED' && (

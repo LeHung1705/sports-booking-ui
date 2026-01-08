@@ -17,21 +17,6 @@ export default function CourtCard({ court, onPress }: CourtCardProps) {
     >
     
       <View style={styles.topRow}>
-        {/* Thumbnail */}
-        {court.imageUrl ? (
-          <Image 
-            source={{ uri: court.imageUrl }} 
-            style={styles.thumbnail}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.thumbnail}>
-            <Text style={styles.thumbnailText}>
-              {court.sport?.[0] ?? "S"}
-            </Text>
-          </View>
-        )}
-
         {/* Info */}
         <View style={styles.info}>
           <Text style={styles.name} numberOfLines={2}>
@@ -52,22 +37,9 @@ export default function CourtCard({ court, onPress }: CourtCardProps) {
           </Text>
         </View>
       </View>
-
-      {/* BOTTOM: button */}
-      <View style={styles.buttonRow}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          activeOpacity={0.85}
-          onPress={onPress}
-        >
-          <Text style={styles.primaryButtonText}>Xem chi tiết</Text>
-        </TouchableOpacity>
-      </View>
     </TouchableOpacity>
   );
 }
-
-const THUMB_HEIGHT = 70;
 
 const styles = StyleSheet.create({
   container: {
@@ -86,20 +58,6 @@ const styles = StyleSheet.create({
   },
   topRow: {
     flexDirection: "row",
-  },
-  thumbnail: {
-    width: THUMB_HEIGHT,
-    height: THUMB_HEIGHT,
-    borderRadius: 12,
-    backgroundColor: Colors.card,
-    marginRight: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  thumbnailText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.text,
   },
   info: {
     flex: 1,

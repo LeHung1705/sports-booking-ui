@@ -26,6 +26,7 @@ export interface BookingListResponse {
     endTime: string;
     createdAt?: string;
     totalPrice: number;
+    depositAmount?: number;
     status: string;
   refundAmount?: number;
   refundBankName?: string;
@@ -70,11 +71,14 @@ export interface ApiVenueAvailabilityResponse {
 
 export interface BookingDetailResponse {
   id: string;
+  venueId: string;
   venue: string;
+  venueImageUrl?: string;
   court: string;
   startTime: string;
   endTime: string;
   totalPrice: number;
+  depositAmount?: number;
   discountAmount?: number;
   voucherCode?: string;
   createdAt: string;

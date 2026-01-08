@@ -99,14 +99,6 @@ export default function CourtDetailScreen() {
       <CustomHeader title={court.name} showBackButton={true} />
 
       <View style={styles.body}>
-        {court.imageUrl ? (
-          <Image source={{ uri: court.imageUrl }} style={styles.image} />
-        ) : (
-          <View style={[styles.image, styles.imagePlaceholder]}>
-            <Text style={styles.imagePlaceholderText}>Chưa có ảnh sân</Text>
-          </View>
-        )}
-
         <View style={styles.cardContainer}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
@@ -227,22 +219,9 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
   },
-  image: {
-    width: "100%",
-    height: 280,
-  },
-  imagePlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.card,
-  },
-  imagePlaceholderText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
   cardContainer: {
     flex: 1,
-    marginTop: -CARD_RADIUS,
+    marginTop: 16,
     borderTopLeftRadius: CARD_RADIUS,
     borderTopRightRadius: CARD_RADIUS,
     backgroundColor: Colors.background,

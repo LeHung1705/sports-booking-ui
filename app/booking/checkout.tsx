@@ -1,4 +1,5 @@
 import { bookingApi } from "@/api/bookingApi";
+import { voucherApi } from "@/api/voucherApi";
 import CustomHeader from "@/components/ui/CustomHeader";
 import PolicyModal from "@/components/ui/PolicyModal";
 import { Colors } from "@/constants/Colors";
@@ -24,48 +25,70 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const bookingId = params.bookingId as string;
+  
+  // Extract primitive params to use in dependency array
+  const courtId = params.courtId as string;
+  const startTime = params.startTime as string;
+  const endTime = params.endTime as string;
+  const totalPrice = params.totalPrice ? Number(params.totalPrice) : 0;
+  const venueId = params.venueId as string;
+  const venueName = params.venueName as string;
+  const courtName = params.courtName as string;
 
   const [booking, setBooking] = useState<BookingDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [note, setNote] = useState("");
-  const [paymentOption, setPaymentOption] = useState<"FULL_PAYMENT" | "DEPOSIT">("DEPOSIT"); // Default match backend
+  const [paymentOption, setPaymentOption] = useState<"FULL_PAYMENT" | "DEPOSIT">("DEPOSIT");
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isExpired, setIsExpired] = useState(false);
   const [showPolicy, setShowPolicy] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   // Voucher State
   const [voucherCode, setVoucherCode] = useState("");
   const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
   const [voucherError, setVoucherError] = useState("");
 
-  // Fetch Booking Details
   useEffect(() => {
-    const fetchBooking = async () => {
-      if (!bookingId) return;
-      try {
-        const data = await bookingApi.getBookingDetail(bookingId);
-        setBooking(data);
-      } catch (error) {
-        Alert.alert("Lỗi", "Không thể tải thông tin đơn hàng.");
-        router.back();
-      } finally {
-        setLoading(false);
+    const init = async () => {
+      if (bookingId) {
+        // Mode 1: Existing booking
+        try {
+          const data = await bookingApi.getBookingDetail(bookingId);
+          setBooking(data);
+        } catch (error) {
+          Alert.alert("Lỗi", "Không thể tải thông tin đơn hàng.");
+          router.back();
+        }
+      } else if (courtId && startTime) {
+        // Mode 2: New booking flow (from Schedule)
+        // Construct mock booking object for display
+        const mockBooking: BookingDetailResponse = {
+            id: '', 
+            venue: venueName || 'Venue',
+            court: courtName || 'Court',
+            startTime: startTime,
+            endTime: endTime,
+            totalPrice: totalPrice,
+            status: 'PENDING_PAYMENT',
+            createdAt: new Date().toISOString(),
+            venueId: venueId,
+            discountAmount: 0,
+            voucherCode: '',
+        } as any; 
+        
+        setBooking(mockBooking);
       }
+      setLoading(false);
     };
-    fetchBooking();
-  }, [bookingId]);
-
-  // Timer Logic
-  useEffect(() => {
-    if (!booking?.createdAt) return;
-
-    // createdAt from backend is LocalDateTime string (e.g. 2023-10-27T10:00:00)
-    // We need to parse it correctly. 
-    // Assuming backend time is server time, and we compare with local device time.
-    // Ideally, backend should return `expiresAt` or server time. 
-    // For prototype, we assume synchronized clocks or use diff.
-    // Use Date.parse() or new Date()
     
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId, courtId, startTime, endTime, totalPrice, venueId, venueName, courtName]);
+
+  // Timer Logic - Only active if booking already exists on backend
+  useEffect(() => {
+    if (!booking?.createdAt || !bookingId) return;
+
     const createdTime = new Date(booking.createdAt).getTime();
     const expireTime = createdTime + 10 * 60 * 1000; // 10 minutes
 
@@ -82,11 +105,10 @@ export default function CheckoutScreen() {
         }
     };
 
-    updateTimer(); // Initial check
+    updateTimer();
     const interval = setInterval(updateTimer, 1000);
-
     return () => clearInterval(interval);
-  }, [booking]);
+  }, [booking?.createdAt, bookingId]);
 
   const handleApplyVoucher = async () => {
     if (!voucherCode.trim() || !booking) return;
@@ -94,25 +116,105 @@ export default function CheckoutScreen() {
     setVoucherError("");
 
     try {
-        await bookingApi.applyVoucher(booking.id, voucherCode);
-        Alert.alert("Thành công", "Đã áp dụng mã giảm giá.");
-        // Refresh booking
-        const updated = await bookingApi.getBookingDetail(booking.id);
-        setBooking(updated);
+        if (bookingId) {
+            // Apply to existing booking
+            await bookingApi.applyVoucher(booking.id, voucherCode);
+            Alert.alert("Thành công", "Đã áp dụng mã giảm giá.");
+            const updated = await bookingApi.getBookingDetail(booking.id);
+            setBooking(updated);
+        } else {
+            // Preview for new booking
+            const currentTotal = Number(booking.totalPrice) || 0;
+            const currentDiscount = Number(booking.discountAmount) || 0;
+            const originalPrice = currentTotal + currentDiscount;
+
+            const res = await voucherApi.previewVoucher(voucherCode, originalPrice, booking.venueId);
+            if (res.valid) {
+                // Update local mock booking
+                setBooking(prev => {
+                    if (!prev) return null;
+                    // Recalculate original price from PREVIOUS state to be safe (though it should match)
+                    const pTotal = Number(prev.totalPrice) || 0;
+                    const pDisc = Number(prev.discountAmount) || 0;
+                    const basePrice = pTotal + pDisc;
+                    
+                    const newDiscount = Number(res.discount) || 0;
+                    const newTotal = Math.max(0, basePrice - newDiscount);
+                    
+                    return {
+                        ...prev,
+                        discountAmount: newDiscount,
+                        voucherCode: voucherCode,
+                        totalPrice: newTotal 
+                    };
+                });
+                Alert.alert("Thành công", "Voucher hợp lệ.");
+            } else {
+                throw new Error(res.reason);
+            }
+        }
     } catch (error: any) {
-        setVoucherError(error.response?.data?.message || "Voucher không hợp lệ");
-        Alert.alert("Lỗi", error.response?.data?.message || "Không thể áp dụng voucher");
+        setVoucherError(error.response?.data?.message || error.message || "Voucher không hợp lệ");
+        Alert.alert("Lỗi", error.response?.data?.message || error.message || "Không thể áp dụng voucher");
     } finally {
         setIsCheckingVoucher(false);
     }
   };
 
-  const onConfirmPolicy = () => {
+  const onConfirmPolicy = async () => {
       setShowPolicy(false);
       if (!booking) return;
 
-      const finalAmount = booking.totalPrice; 
+      let finalBookingId = bookingId;
+      let finalAmount = booking.totalPrice;
       
+      // Initialize with potentially existing info
+      let bankBin = booking.bankBin;
+      let bankAccountNumber = booking.bankAccountNumber;
+      let bankAccountName = booking.bankAccountName;
+
+      // Create booking if not exists
+      if (!finalBookingId) {
+          setCreating(true);
+          try {
+              // 1. Create Booking
+              const createRes = await bookingApi.createBooking({
+                  court_id: courtId,
+                  start_time: startTime,
+                  end_time: endTime,
+                  payment_option: paymentOption
+              });
+              finalBookingId = createRes.id;
+              finalAmount = createRes.totalAmount;
+              
+              // Capture bank info from response
+              bankBin = createRes.bankBin;
+              bankAccountNumber = createRes.bankAccountNumber;
+              bankAccountName = createRes.bankAccountName;
+
+              // 2. Apply voucher if selected
+              if (booking.voucherCode) {
+                  try {
+                      await bookingApi.applyVoucher(finalBookingId, booking.voucherCode);
+                      const details = await bookingApi.getBookingDetail(finalBookingId);
+                      finalAmount = details.totalPrice;
+                      // Update bank info just in case
+                      bankBin = details.bankBin;
+                      bankAccountNumber = details.bankAccountNumber;
+                      bankAccountName = details.bankAccountName;
+                  } catch (e) {
+                      console.error("Failed to apply voucher to new booking", e);
+                  }
+              }
+          } catch (e: any) {
+              setCreating(false);
+              Alert.alert("Lỗi", e.response?.data?.message || "Không thể tạo đơn hàng. Vui lòng thử lại.");
+              return;
+          }
+          setCreating(false);
+      }
+
+      // Calculate deposit if needed
       let amountToPay = 0;
       if (paymentOption === "DEPOSIT") {
           amountToPay = Math.round(finalAmount * 0.3);
@@ -123,18 +225,18 @@ export default function CheckoutScreen() {
       router.push({
           pathname: "/booking/payment",
           params: {
-              bookingId: booking.id,
+              bookingId: finalBookingId,
               totalAmount: amountToPay.toString(),
-              bankBin: booking.bankBin,
-              bankAccount: booking.bankAccountNumber,
-              bankName: booking.bankAccountName
+              bankBin: bankBin || '',
+              bankAccount: bankAccountNumber || '',
+              bankName: bankAccountName || '',
           }
       });
   };
 
   const handleProceed = () => {
       if (!booking) return;
-      if (isExpired) {
+      if (bookingId && isExpired) { // Only check expiry if real booking
           Alert.alert("Hết hạn", "Đơn hàng đã hết hạn giữ chỗ.");
           return;
       }
@@ -174,8 +276,8 @@ export default function CheckoutScreen() {
       <CustomHeader title="Thanh toán" showBackButton />
       <StatusBar barStyle="dark-content" />
 
-      {/* COUNTDOWN TIMER */}
-      {timeLeft !== null && (
+      {/* COUNTDOWN TIMER - Only if bookingId exists */}
+      {bookingId && timeLeft !== null && (
           <View style={[styles.timerContainer, isExpired && styles.timerExpired]}>
               <Text style={styles.timerLabel}>
                   {isExpired ? "Hết thời gian giữ chỗ" : "Thời gian giữ chỗ còn lại:"}
@@ -205,7 +307,7 @@ export default function CheckoutScreen() {
                     <View style={{ alignItems: 'flex-end' }}>
                         {(booking.discountAmount && booking.discountAmount > 0) ? (
                             <Text style={styles.originalPriceText}>
-                                {(booking.totalPrice + booking.discountAmount).toLocaleString("vi-VN")} đ
+                                {(Number(booking.totalPrice) + Number(booking.discountAmount)).toLocaleString("vi-VN")} đ
                             </Text>
                         ) : null}
                         {(booking.discountAmount && booking.discountAmount > 0) ? (
@@ -230,15 +332,15 @@ export default function CheckoutScreen() {
                             value={voucherCode}
                             onChangeText={setVoucherCode}
                             autoCapitalize="characters"
-                            editable={!isExpired}
+                            editable={!isExpired && !booking.voucherCode} // Disable if applied or expired
                         />
                         <TouchableOpacity 
-                            style={[
+                            style={[ 
                                 styles.applyButton, 
-                                (!voucherCode || isCheckingVoucher || isExpired) && styles.applyButtonDisabled
+                                (!voucherCode || isCheckingVoucher || isExpired || !!booking.voucherCode) && styles.applyButtonDisabled
                             ]}
                             onPress={handleApplyVoucher}
-                            disabled={!voucherCode || isCheckingVoucher || isExpired}
+                            disabled={!voucherCode || isCheckingVoucher || isExpired || !!booking.voucherCode}
                         >
                             {isCheckingVoucher ? (
                                 <ActivityIndicator color="#fff" size="small" />
@@ -271,7 +373,7 @@ export default function CheckoutScreen() {
                         <View style={[styles.totalRow, { marginTop: 4 }]}>
                             <Text style={[styles.totalLabel, { fontSize: 14, color: '#666' }]}>Tạm tính</Text>
                             <Text style={[styles.totalValue, { fontSize: 16, color: '#666', textDecorationLine: 'line-through' }]}>
-                                {(booking.totalPrice + booking.discountAmount).toLocaleString("vi-VN")} đ
+                                {(Number(booking.totalPrice) + Number(booking.discountAmount)).toLocaleString("vi-VN")} đ
                             </Text>
                         </View>
                         <View style={[styles.totalRow, { marginTop: 4 }]}>
@@ -327,13 +429,17 @@ export default function CheckoutScreen() {
 
         <View style={styles.footer}>
             <TouchableOpacity 
-                style={[styles.confirmButton, isExpired && styles.disabledButton]} 
+                style={[styles.confirmButton, (isExpired || creating) && styles.disabledButton]} 
                 onPress={handleProceed}
-                disabled={isExpired}
+                disabled={isExpired || creating}
             >
-                <Text style={styles.confirmButtonText}>
-                    {isExpired ? "Đã hết hạn" : "Tiếp tục thanh toán"}
-                </Text>
+                {creating ? (
+                    <ActivityIndicator color="white" />
+                ) : (
+                    <Text style={styles.confirmButtonText}>
+                        {isExpired ? "Đã hết hạn" : "Tiếp tục thanh toán"}
+                    </Text>
+                )}
             </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
